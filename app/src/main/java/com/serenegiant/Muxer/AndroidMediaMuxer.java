@@ -1,11 +1,11 @@
-package com.serenegiant.encoder;
+package com.serenegiant.Muxer;
 /*
  * AudioVideoRecordingSample
  * Sample project to cature audio and video from internal mic/camera and save as MPEG4 file.
  *
  * Copyright (c) 2014-2015 saki t_saki@serenegiant.com
  *
- * File name: MediaMuxerWrapper.java
+ * File name: AndroidMediaMuxer.java
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,23 +22,23 @@ package com.serenegiant.encoder;
  * All files in the folder are under this Apache License, Version 2.0.
 */
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.text.SimpleDateFormat;
-import java.util.GregorianCalendar;
 import java.util.Locale;
 
 import android.media.MediaCodec;
 import android.media.MediaFormat;
 import android.media.MediaMuxer;
-import android.os.Environment;
-import android.text.TextUtils;
 import android.util.Log;
 
-public class MediaMuxerWrapper {
-	private static final boolean DEBUG = false;	// TODO set false on release
-	private static final String TAG = "MediaMuxerWrapper";
+import com.serenegiant.encoder.MediaCodecAudioEncoder;
+import com.serenegiant.encoder.MediaCodecEncoder;
+import com.serenegiant.encoder.MediaCodecVideoEncoder;
+
+public class AndroidMediaMuxer {
+	private static final boolean DEBUG = true;	// TODO set false on release
+	private static final String TAG = "AndroidMediaMuxer";
 
 	private static final String DIR_NAME = "AVRecSample";
     private static final SimpleDateFormat mDateTimeFormat = new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss", Locale.US);
@@ -47,17 +47,16 @@ public class MediaMuxerWrapper {
 	private final MediaMuxer mMediaMuxer;	// API >= 18
 	private int mEncoderCount, mStatredCount;
 	private boolean mIsStarted;
-	private MediaEncoder mVideoEncoder, mAudioEncoder;
+	private MediaCodecEncoder mVideoEncoder, mAudioEncoder;
 
 	/**
 	 * Constructor
-	 * @param ext extension of output file
+	 * @param path extension of output file
 	 * @throws IOException
 	 */
-	public MediaMuxerWrapper(String ext) throws IOException {
-		if (TextUtils.isEmpty(ext)) ext = ".mp4";
+	public AndroidMediaMuxer(String path) throws IOException {
 		try {
-			mOutputPath = getCaptureFile(Environment.DIRECTORY_MOVIES, ext).toString();
+			mOutputPath = path;
 		} catch (final NullPointerException e) {
 			throw new RuntimeException("This app has no permission of writing external storage");
 		}
@@ -66,9 +65,6 @@ public class MediaMuxerWrapper {
 		mIsStarted = false;
 	}
 
-	public String getOutputPath() {
-		return mOutputPath;
-	}
 
 	public void prepare() throws IOException {
 		if (mVideoEncoder != null)
@@ -101,14 +97,14 @@ public class MediaMuxerWrapper {
 //**********************************************************************
 	/**
 	 * assign encoder to this calss. this is called from encoder.
-	 * @param encoder instance of MediaVideoEncoder or MediaAudioEncoder
+	 * @param encoder instance of MediaCodecVideoEncoder or MediaCodecAudioEncoder
 	 */
-	/*package*/ void addEncoder(final MediaEncoder encoder) {
-		if (encoder instanceof MediaVideoEncoder) {
+	/*package*/ public void addEncoder(final MediaCodecEncoder encoder) {
+		if (encoder instanceof MediaCodecVideoEncoder) {
 			if (mVideoEncoder != null)
 				throw new IllegalArgumentException("Video encoder already added.");
 			mVideoEncoder = encoder;
-		} else if (encoder instanceof MediaAudioEncoder) {
+		} else if (encoder instanceof MediaCodecAudioEncoder) {
 			if (mAudioEncoder != null)
 				throw new IllegalArgumentException("Video encoder already added.");
 			mAudioEncoder = encoder;
@@ -121,7 +117,7 @@ public class MediaMuxerWrapper {
 	 * request start recording from encoder
 	 * @return true when muxer is ready to write
 	 */
-	/*package*/ synchronized boolean start() {
+	/*package*/ public synchronized boolean start() {
 		if (DEBUG) Log.v(TAG,  "start:");
 		mStatredCount++;
 		if ((mEncoderCount > 0) && (mStatredCount == mEncoderCount)) {
@@ -136,7 +132,7 @@ public class MediaMuxerWrapper {
 	/**
 	 * request stop recording from encoder when encoder received EOS
 	*/
-	/*package*/ synchronized void stop() {
+	/*package*/ public synchronized void stop() {
 		if (DEBUG) Log.v(TAG,  "stop:mStatredCount=" + mStatredCount);
 		mStatredCount--;
 		if ((mEncoderCount > 0) && (mStatredCount <= 0)) {
@@ -152,7 +148,7 @@ public class MediaMuxerWrapper {
 	 * @param format
 	 * @return minus value indicate error
 	 */
-	/*package*/ synchronized int addTrack(final MediaFormat format) {
+	/*package*/ public synchronized int addTrack(final MediaFormat format) {
 		if (mIsStarted)
 			throw new IllegalStateException("muxer already started");
 		final int trackIx = mMediaMuxer.addTrack(format);
@@ -166,36 +162,9 @@ public class MediaMuxerWrapper {
 	 * @param byteBuf
 	 * @param bufferInfo
 	 */
-	/*package*/ synchronized void writeSampleData(final int trackIndex, final ByteBuffer byteBuf, final MediaCodec.BufferInfo bufferInfo) {
+	/*package*/ public synchronized void writeSampleData(final int trackIndex, final ByteBuffer byteBuf, final MediaCodec.BufferInfo bufferInfo) {
 		if (mStatredCount > 0)
 			mMediaMuxer.writeSampleData(trackIndex, byteBuf, bufferInfo);
 	}
-
-//**********************************************************************
-//**********************************************************************
-    /**
-     * generate output file
-     * @param type Environment.DIRECTORY_MOVIES / Environment.DIRECTORY_DCIM etc.
-     * @param ext .mp4(.m4a for audio) or .png
-     * @return return null when this app has no writing permission to external storage.
-     */
-    public static final File getCaptureFile(final String type, final String ext) {
-		final File dir = new File(Environment.getExternalStoragePublicDirectory(type), DIR_NAME);
-		Log.d(TAG, "path=" + dir.toString());
-		dir.mkdirs();
-        if (dir.canWrite()) {
-        	return new File(dir, getDateTimeString() + ext);
-        }
-    	return null;
-    }
-
-    /**
-     * get current date and time as String
-     * @return
-     */
-    private static final String getDateTimeString() {
-    	final GregorianCalendar now = new GregorianCalendar();
-    	return mDateTimeFormat.format(now.getTime());
-    }
 
 }

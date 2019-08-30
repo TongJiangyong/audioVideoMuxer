@@ -5,7 +5,7 @@ package com.serenegiant.encoder;
  *
  * Copyright (c) 2014-2015 saki t_saki@serenegiant.com
  *
- * File name: MediaAudioEncoder.java
+ * File name: MediaCodecAudioEncoder.java
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -34,9 +34,11 @@ import android.media.MediaFormat;
 import android.media.MediaRecorder;
 import android.util.Log;
 
-public class MediaAudioEncoder extends MediaEncoder {
+import com.serenegiant.Muxer.AndroidMediaMuxer;
+
+public class MediaCodecAudioEncoder extends MediaCodecEncoder {
 	private static final boolean DEBUG = false;	// TODO set false on release
-	private static final String TAG = "MediaAudioEncoder";
+	private static final String TAG = "MediaCodecAudioEncoder";
 
 	private static final String MIME_TYPE = "audio/mp4a-latm";
     private static final int SAMPLE_RATE = 44100;	// 44.1[KHz] is only setting guaranteed to be available on all devices.
@@ -46,12 +48,12 @@ public class MediaAudioEncoder extends MediaEncoder {
 
     private AudioThread mAudioThread = null;
 
-	public MediaAudioEncoder(final MediaMuxerWrapper muxer, final MediaEncoderListener listener) {
+	public MediaCodecAudioEncoder(final AndroidMediaMuxer muxer, final MediaEncoderListener listener) {
 		super(muxer, listener);
 	}
 
 	@Override
-	protected void prepare() throws IOException {
+	public void prepare() throws IOException {
 		if (DEBUG) Log.v(TAG, "prepare:");
         mTrackIndex = -1;
         mMuxerStarted = mIsEOS = false;
@@ -85,7 +87,7 @@ public class MediaAudioEncoder extends MediaEncoder {
 	}
 
     @Override
-	protected void startRecording() {
+	public void startRecording() {
 		super.startRecording();
 		// create and execute audio capturing thread using internal mic
 		if (mAudioThread == null) {

@@ -34,10 +34,10 @@ import android.view.ViewGroup;
 import android.widget.ImageButton;
 import android.widget.TextView;
 
-import com.serenegiant.encoder.MediaAudioEncoder;
-import com.serenegiant.encoder.MediaEncoder;
-import com.serenegiant.encoder.MediaMuxerWrapper;
-import com.serenegiant.encoder.MediaVideoEncoder;
+import com.serenegiant.Muxer.AndroidMediaMuxer;
+import com.serenegiant.encoder.MediaCodecAudioEncoder;
+import com.serenegiant.encoder.MediaCodecEncoder;
+import com.serenegiant.encoder.MediaCodecVideoEncoder;
 
 public class CameraFragment extends Fragment {
 	private static final boolean DEBUG = false;	// TODO set false on release
@@ -58,7 +58,7 @@ public class CameraFragment extends Fragment {
 	/**
 	 * muxer for audio/video recording
 	 */
-	private MediaMuxerWrapper mMuxer;
+	private AndroidMediaMuxer mMuxer;
 
 	public CameraFragment() {
 		// need default constructor
@@ -133,14 +133,14 @@ public class CameraFragment extends Fragment {
 		if (DEBUG) Log.v(TAG, "startRecording:");
 		try {
 			mRecordButton.setColorFilter(0xffff0000);	// turn red
-			mMuxer = new MediaMuxerWrapper(".mp4");	// if you record audio only, ".m4a" is also OK.
+			mMuxer = new AndroidMediaMuxer("/sdcard/testAudioVideo.mp4");	// if you record audio only, ".m4a" is also OK.
 			if (true) {
 				// for video capturing
-				new MediaVideoEncoder(mMuxer, mMediaEncoderListener, mCameraView.getVideoWidth(), mCameraView.getVideoHeight());
+				new MediaCodecVideoEncoder(mMuxer, mMediaEncoderListener, mCameraView.getVideoWidth(), mCameraView.getVideoHeight());
 			}
 			if (true) {
 				// for audio capturing
-				new MediaAudioEncoder(mMuxer, mMediaEncoderListener);
+				new MediaCodecAudioEncoder(mMuxer, mMediaEncoderListener);
 			}
 			mMuxer.prepare();
 			mMuxer.startRecording();
@@ -166,18 +166,18 @@ public class CameraFragment extends Fragment {
 	/**
 	 * callback methods from encoder
 	 */
-	private final MediaEncoder.MediaEncoderListener mMediaEncoderListener = new MediaEncoder.MediaEncoderListener() {
+	private final MediaCodecEncoder.MediaEncoderListener mMediaEncoderListener = new MediaCodecEncoder.MediaEncoderListener() {
 		@Override
-		public void onPrepared(final MediaEncoder encoder) {
+		public void onPrepared(final MediaCodecEncoder encoder) {
 			if (DEBUG) Log.v(TAG, "onPrepared:encoder=" + encoder);
-			if (encoder instanceof MediaVideoEncoder)
-				mCameraView.setVideoEncoder((MediaVideoEncoder)encoder);
+			if (encoder instanceof MediaCodecVideoEncoder)
+				mCameraView.setVideoEncoder((MediaCodecVideoEncoder)encoder);
 		}
 
 		@Override
-		public void onStopped(final MediaEncoder encoder) {
+		public void onStopped(final MediaCodecEncoder encoder) {
 			if (DEBUG) Log.v(TAG, "onStopped:encoder=" + encoder);
-			if (encoder instanceof MediaVideoEncoder)
+			if (encoder instanceof MediaCodecVideoEncoder)
 				mCameraView.setVideoEncoder(null);
 		}
 	};

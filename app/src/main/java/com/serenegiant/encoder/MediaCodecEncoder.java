@@ -5,7 +5,7 @@ package com.serenegiant.encoder;
  *
  * Copyright (c) 2014-2015 saki t_saki@serenegiant.com
  *
- * File name: MediaEncoder.java
+ * File name: MediaCodecEncoder.java
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,17 +30,19 @@ import android.media.MediaCodec;
 import android.media.MediaFormat;
 import android.util.Log;
 
-public abstract class MediaEncoder implements Runnable {
+import com.serenegiant.Muxer.AndroidMediaMuxer;
+
+public abstract class MediaCodecEncoder implements Runnable {
 	private static final boolean DEBUG = false;	// TODO set false on release
-	private static final String TAG = "MediaEncoder";
+	private static final String TAG = "MediaCodecEncoder";
 
 	protected static final int TIMEOUT_USEC = 10000;	// 10[msec]
 	protected static final int MSG_FRAME_AVAILABLE = 1;
 	protected static final int MSG_STOP_RECORDING = 9;
 
 	public interface MediaEncoderListener {
-		public void onPrepared(MediaEncoder encoder);
-		public void onStopped(MediaEncoder encoder);
+		public void onPrepared(MediaCodecEncoder encoder);
+		public void onStopped(MediaCodecEncoder encoder);
 	}
 
 	protected final Object mSync = new Object();
@@ -75,7 +77,7 @@ public abstract class MediaEncoder implements Runnable {
     /**
      * Weak refarence of MediaMuxerWarapper instance
      */
-    protected final WeakReference<MediaMuxerWrapper> mWeakMuxer;
+    protected final WeakReference<AndroidMediaMuxer> mWeakMuxer;
     /**
      * BufferInfo instance for dequeuing
      */
@@ -83,16 +85,17 @@ public abstract class MediaEncoder implements Runnable {
 
     protected final MediaEncoderListener mListener;
 
-    public MediaEncoder(final MediaMuxerWrapper muxer, final MediaEncoderListener listener) {
+    public MediaCodecEncoder(final AndroidMediaMuxer muxer, final MediaEncoderListener listener) {
     	if (listener == null) throw new NullPointerException("MediaEncoderListener is null");
-    	if (muxer == null) throw new NullPointerException("MediaMuxerWrapper is null");
-		mWeakMuxer = new WeakReference<MediaMuxerWrapper>(muxer);
+    	if (muxer == null) throw new NullPointerException("AndroidMediaMuxer is null");
+		mWeakMuxer = new WeakReference<AndroidMediaMuxer>(muxer);
 		muxer.addEncoder(this);
 		mListener = listener;
         synchronized (mSync) {
             // create BufferInfo here for effectiveness(to reduce GC)
             mBufferInfo = new MediaCodec.BufferInfo();
             // wait for starting thread
+			//启动当前线程
             new Thread(this, getClass().getSimpleName()).start();
             try {
             	mSync.wait();
@@ -101,10 +104,6 @@ public abstract class MediaEncoder implements Runnable {
         }
 	}
 
-    public String getOutputPath() {
-    	final MediaMuxerWrapper muxer = mWeakMuxer.get();
-    	return muxer != null ? muxer.getOutputPath() : null;
-    }
 
     /**
      * the method to indicate frame data is soon available or already available
@@ -137,6 +136,7 @@ public abstract class MediaEncoder implements Runnable {
         boolean localRequestStop;
         boolean localRequestDrain;
         while (isRunning) {
+        	Log.i("TJY","MediaCodecEncoder run MediaCodecEncoder");
         	synchronized (mSync) {
         		localRequestStop = mRequestStop;
         		localRequestDrain = (mRequestDrain > 0);
@@ -177,9 +177,9 @@ public abstract class MediaEncoder implements Runnable {
     * this method should be implemented in sub class, so set this as abstract method
     * @throws IOException
     */
-   /*package*/ abstract void prepare() throws IOException;
+   /*package*/ public abstract void prepare() throws IOException;
 
-	/*package*/ void startRecording() {
+	/*package*/ public void startRecording() {
    	if (DEBUG) Log.v(TAG, "startRecording");
 		synchronized (mSync) {
 			mIsCapturing = true;
@@ -191,7 +191,7 @@ public abstract class MediaEncoder implements Runnable {
    /**
     * the method to request stop encoding
     */
-	/*package*/ void stopRecording() {
+	/*package*/ public void stopRecording() {
 		if (DEBUG) Log.v(TAG, "stopRecording");
 		synchronized (mSync) {
 			if (!mIsCapturing || mRequestStop) {
@@ -227,7 +227,7 @@ public abstract class MediaEncoder implements Runnable {
 			}
         }
         if (mMuxerStarted) {
-       		final MediaMuxerWrapper muxer = mWeakMuxer != null ? mWeakMuxer.get() : null;
+       		final AndroidMediaMuxer muxer = mWeakMuxer != null ? mWeakMuxer.get() : null;
        		if (muxer != null) {
        			try {
            			muxer.stop();
@@ -292,7 +292,7 @@ public abstract class MediaEncoder implements Runnable {
     	if (mMediaCodec == null) return;
         ByteBuffer[] encoderOutputBuffers = mMediaCodec.getOutputBuffers();
         int encoderStatus, count = 0;
-        final MediaMuxerWrapper muxer = mWeakMuxer.get();
+        final AndroidMediaMuxer muxer = mWeakMuxer.get();
         if (muxer == null) {
 //        	throw new NullPointerException("muxer is unexpectedly null");
         	Log.w(TAG, "muxer is unexpectedly null");

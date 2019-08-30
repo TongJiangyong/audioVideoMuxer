@@ -5,7 +5,7 @@ package com.serenegiant.encoder;
  *
  * Copyright (c) 2014-2015 saki t_saki@serenegiant.com
  *
- * File name: MediaVideoEncoder.java
+ * File name: MediaCodecVideoEncoder.java
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,11 +32,12 @@ import android.opengl.EGLContext;
 import android.util.Log;
 import android.view.Surface;
 
+import com.serenegiant.Muxer.AndroidMediaMuxer;
 import com.serenegiant.glutils.RenderHandler;
 
-public class MediaVideoEncoder extends MediaEncoder {
+public class MediaCodecVideoEncoder extends MediaCodecEncoder {
 	private static final boolean DEBUG = false;	// TODO set false on release
-	private static final String TAG = "MediaVideoEncoder";
+	private static final String TAG = "MediaCodecVideoEncoder";
 
 	private static final String MIME_TYPE = "video/avc";
 	// parameters for recording
@@ -48,9 +49,9 @@ public class MediaVideoEncoder extends MediaEncoder {
     private RenderHandler mRenderHandler;
     private Surface mSurface;
 
-	public MediaVideoEncoder(final MediaMuxerWrapper muxer, final MediaEncoderListener listener, final int width, final int height) {
+	public MediaCodecVideoEncoder(final AndroidMediaMuxer muxer, final MediaEncoderListener listener, final int width, final int height) {
 		super(muxer, listener);
-		if (DEBUG) Log.i(TAG, "MediaVideoEncoder: ");
+		if (DEBUG) Log.i(TAG, "MediaCodecVideoEncoder: ");
 		mWidth = width;
 		mHeight = height;
 		mRenderHandler = RenderHandler.createHandler(TAG);
@@ -79,7 +80,7 @@ public class MediaVideoEncoder extends MediaEncoder {
 	}
 
 	@Override
-	protected void prepare() throws IOException {
+	public void prepare() throws IOException {
 		if (DEBUG) Log.i(TAG, "prepare: ");
         mTrackIndex = -1;
         mMuxerStarted = mIsEOS = false;

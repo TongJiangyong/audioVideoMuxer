@@ -48,7 +48,7 @@ import android.view.Surface;
 import android.view.SurfaceHolder;
 import android.view.WindowManager;
 
-import com.serenegiant.encoder.MediaVideoEncoder;
+import com.serenegiant.encoder.MediaCodecVideoEncoder;
 import com.serenegiant.glutils.GLDrawer2D;
 
 /**
@@ -173,7 +173,7 @@ public final class CameraGLView extends GLSurfaceView {
 		super.surfaceDestroyed(holder);
 	}
 
-	public void setVideoEncoder(final MediaVideoEncoder encoder) {
+	public void setVideoEncoder(final MediaCodecVideoEncoder encoder) {
 		if (DEBUG) Log.v(TAG, "setVideoEncoder:tex_id=" + mRenderer.hTex + ",encoder=" + encoder);
 		queueEvent(new Runnable() {
 			@Override
@@ -212,7 +212,7 @@ public final class CameraGLView extends GLSurfaceView {
 		private GLDrawer2D mDrawer;
 		private final float[] mStMatrix = new float[16];
 		private final float[] mMvpMatrix = new float[16];
-		private MediaVideoEncoder mVideoEncoder;
+		private MediaCodecVideoEncoder mVideoEncoder;
 
 		public CameraSurfaceRenderer(final CameraGLView parent) {
 			if (DEBUG) Log.v(TAG, "CameraSurfaceRenderer:");
