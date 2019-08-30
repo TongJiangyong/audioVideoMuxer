@@ -35,12 +35,16 @@ import android.widget.ImageButton;
 import android.widget.TextView;
 
 import com.serenegiant.Muxer.AndroidMediaMuxer;
+import com.serenegiant.Muxer.BaseMuxer;
+import com.serenegiant.encoder.BaseEncoder;
+import com.serenegiant.encoder.IEncoderListener;
 import com.serenegiant.encoder.MediaCodecAudioEncoder;
 import com.serenegiant.encoder.MediaCodecEncoder;
 import com.serenegiant.encoder.MediaCodecVideoEncoder;
+import com.serenegiant.encoder.MediaEncoderFormat;
 
 public class CameraFragment extends Fragment {
-	private static final boolean DEBUG = false;	// TODO set false on release
+	private static final boolean DEBUG = true;	// TODO set false on release
 	private static final String TAG = "CameraFragment";
 
 	/**
@@ -58,7 +62,9 @@ public class CameraFragment extends Fragment {
 	/**
 	 * muxer for audio/video recording
 	 */
-	private AndroidMediaMuxer mMuxer;
+	private BaseMuxer mMuxer;
+
+	private BaseEncoder audioEncoder,videoEncoder;
 
 	public CameraFragment() {
 		// need default constructor
@@ -130,20 +136,24 @@ public class CameraFragment extends Fragment {
 	 * of encoder is heavy work
 	 */
 	private void startRecording() {
-		if (DEBUG) Log.v(TAG, "startRecording:");
+		if (DEBUG) Log.v(TAG, "startEncoders:");
 		try {
 			mRecordButton.setColorFilter(0xffff0000);	// turn red
 			mMuxer = new AndroidMediaMuxer("/sdcard/testAudioVideo.mp4");	// if you record audio only, ".m4a" is also OK.
 			if (true) {
 				// for video capturing
-				new MediaCodecVideoEncoder(mMuxer, mMediaEncoderListener, mCameraView.getVideoWidth(), mCameraView.getVideoHeight());
+				videoEncoder = new MediaCodecVideoEncoder(mMediaEncoderListener, mCameraView.getVideoWidth(), mCameraView.getVideoHeight());
 			}
 			if (true) {
 				// for audio capturing
-				new MediaCodecAudioEncoder(mMuxer, mMediaEncoderListener);
+				audioEncoder = new MediaCodecAudioEncoder(mMediaEncoderListener);
 			}
-			mMuxer.prepare();
-			mMuxer.startRecording();
+			//mMuxer.addEncoder(videoEncoder);
+			mMuxer.addEncoder(audioEncoder);
+			//videoEncoder.getEncoderedDataConnector().connect(mMuxer);
+			audioEncoder.getEncoderedDataConnector().connect(mMuxer);
+			mMuxer.prepareEncoders();
+			mMuxer.startEncoders();
 		} catch (final IOException e) {
 			mRecordButton.setColorFilter(0);
 			Log.e(TAG, "startCapture:", e);
@@ -154,11 +164,10 @@ public class CameraFragment extends Fragment {
 	 * request stop recording
 	 */
 	private void stopRecording() {
-		if (DEBUG) Log.v(TAG, "stopRecording:mMuxer=" + mMuxer);
+		if (DEBUG) Log.v(TAG, "stopEncoders:mMuxer=" + mMuxer);
 		mRecordButton.setColorFilter(0);	// return to default color
 		if (mMuxer != null) {
-			mMuxer.stopRecording();
-			mMuxer = null;
+			mMuxer.stopEncoders();
 			// you should not wait here
 		}
 	}
@@ -166,19 +175,49 @@ public class CameraFragment extends Fragment {
 	/**
 	 * callback methods from encoder
 	 */
-	private final MediaCodecEncoder.MediaEncoderListener mMediaEncoderListener = new MediaCodecEncoder.MediaEncoderListener() {
+	private final IEncoderListener mMediaEncoderListener = new IEncoderListener() {
+
+
 		@Override
-		public void onPrepared(final MediaCodecEncoder encoder) {
-			if (DEBUG) Log.v(TAG, "onPrepared:encoder=" + encoder);
-			if (encoder instanceof MediaCodecVideoEncoder)
-				mCameraView.setVideoEncoder((MediaCodecVideoEncoder)encoder);
+		public void onEncoderStopped(BaseEncoder mediaEncoder) {
+			if (DEBUG) Log.v(TAG, "onStopped:encoder=" + mediaEncoder);
+			if (mediaEncoder instanceof MediaCodecVideoEncoder)
+				mCameraView.setVideoEncoder(null);
 		}
 
 		@Override
-		public void onStopped(final MediaCodecEncoder encoder) {
-			if (DEBUG) Log.v(TAG, "onStopped:encoder=" + encoder);
-			if (encoder instanceof MediaCodecVideoEncoder)
-				mCameraView.setVideoEncoder(null);
+		public void onEncoderPrepared(BaseEncoder mediaEncoder) {
+			if (DEBUG) Log.v(TAG, "onPrepared:encoder=" + mediaEncoder);
+			if (mediaEncoder instanceof MediaCodecVideoEncoder)
+				mCameraView.setVideoEncoder((MediaCodecVideoEncoder)mediaEncoder);
+		}
+
+		@Override
+		public void onEncoderReleased() throws Exception {
+			try {
+				if (DEBUG) Log.v(TAG, "onEncoderReleased");
+				mMuxer.stopMuxer();
+			} catch (Exception e) {
+				throw e;
+			}
+		}
+
+		@Override
+		public int onEncoderOutPutBufferReady(MediaEncoderFormat mediaEncoderFormat) throws InterruptedException {
+			int trackIndex = mMuxer.addTrackToMuxer(mediaEncoderFormat);
+			if (!mMuxer.startMuxer()) {
+               		// we should wait until muxer is ready
+					if (DEBUG) Log.v(TAG, "onEncoderOutPutBufferReady");
+               		synchronized (mMuxer) {
+	               		while (!mMuxer.isMuxerStarted())
+						try {
+							mMuxer.wait(100);
+						} catch (Exception e) {
+							throw e;
+						}
+               		}
+               	}
+			return trackIndex;
 		}
 	};
 }

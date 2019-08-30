@@ -49,8 +49,8 @@ public class MediaCodecVideoEncoder extends MediaCodecEncoder {
     private RenderHandler mRenderHandler;
     private Surface mSurface;
 
-	public MediaCodecVideoEncoder(final AndroidMediaMuxer muxer, final MediaEncoderListener listener, final int width, final int height) {
-		super(muxer, listener);
+	public MediaCodecVideoEncoder(final IEncoderListener listener, final int width, final int height) {
+		super(listener);
 		if (DEBUG) Log.i(TAG, "MediaCodecVideoEncoder: ");
 		mWidth = width;
 		mHeight = height;
@@ -81,9 +81,9 @@ public class MediaCodecVideoEncoder extends MediaCodecEncoder {
 
 	@Override
 	public void prepare() throws IOException {
-		if (DEBUG) Log.i(TAG, "prepare: ");
+		if (DEBUG) Log.i(TAG, "prepareEncoders: ");
         mTrackIndex = -1;
-        mMuxerStarted = mIsEOS = false;
+        mOutputBufferEnabled = mIsEOS = false;
 
         final MediaCodecInfo videoCodecInfo = selectVideoCodec(MIME_TYPE);
         if (videoCodecInfo == null) {
@@ -105,12 +105,12 @@ public class MediaCodecVideoEncoder extends MediaCodecEncoder {
         // this method only can call between #configure and #start
         mSurface = mMediaCodec.createInputSurface();	// API >= 18
         mMediaCodec.start();
-        if (DEBUG) Log.i(TAG, "prepare finishing");
+        if (DEBUG) Log.i(TAG, "prepareEncoders finishing");
         if (mListener != null) {
         	try {
-        		mListener.onPrepared(this);
+        		mListener.onEncoderPrepared(this);
         	} catch (final Exception e) {
-        		Log.e(TAG, "prepare:", e);
+        		Log.e(TAG, "prepareEncoders:", e);
         	}
         }
 	}
@@ -229,4 +229,8 @@ public class MediaCodecVideoEncoder extends MediaCodecEncoder {
 		mIsEOS = true;
 	}
 
+	@Override
+	public int onDataAvailable(VideoCaptureFrame data) {
+		return 0;
+	}
 }

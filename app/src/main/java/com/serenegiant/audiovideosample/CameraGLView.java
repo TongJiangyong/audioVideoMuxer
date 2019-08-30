@@ -457,7 +457,7 @@ public final class CameraGLView extends GLSurfaceView {
 
     	/**
     	 * message loop
-    	 * prepare Looper and create Handler for this thread
+    	 * prepareEncoders Looper and create Handler for this thread
     	 */
 		@Override
 		public void run() {

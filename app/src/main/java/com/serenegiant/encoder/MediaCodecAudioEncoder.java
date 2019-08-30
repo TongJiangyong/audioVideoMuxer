@@ -48,16 +48,16 @@ public class MediaCodecAudioEncoder extends MediaCodecEncoder {
 
     private AudioThread mAudioThread = null;
 
-	public MediaCodecAudioEncoder(final AndroidMediaMuxer muxer, final MediaEncoderListener listener) {
-		super(muxer, listener);
+	public MediaCodecAudioEncoder(final IEncoderListener listener) {
+		super(listener);
 	}
 
 	@Override
 	public void prepare() throws IOException {
-		if (DEBUG) Log.v(TAG, "prepare:");
+		if (DEBUG) Log.v(TAG, "prepareEncoders:");
         mTrackIndex = -1;
-        mMuxerStarted = mIsEOS = false;
-        // prepare MediaCodec for AAC encoding of audio data from inernal mic.
+        mOutputBufferEnabled = mIsEOS = false;
+        // prepareEncoders MediaCodec for AAC encoding of audio data from inernal mic.
         final MediaCodecInfo audioCodecInfo = selectAudioCodec(MIME_TYPE);
         if (audioCodecInfo == null) {
             Log.e(TAG, "Unable to find an appropriate codec for " + MIME_TYPE);
@@ -76,12 +76,12 @@ public class MediaCodecAudioEncoder extends MediaCodecEncoder {
         mMediaCodec = MediaCodec.createEncoderByType(MIME_TYPE);
         mMediaCodec.configure(audioFormat, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
         mMediaCodec.start();
-        if (DEBUG) Log.i(TAG, "prepare finishing");
+        if (DEBUG) Log.i(TAG, "prepareEncoders finishing");
         if (mListener != null) {
         	try {
-        		mListener.onPrepared(this);
+        		mListener.onEncoderPrepared(this);
         	} catch (final Exception e) {
-        		Log.e(TAG, "prepare:", e);
+        		Log.e(TAG, "prepareEncoders:", e);
         	}
         }
 	}
@@ -109,6 +109,7 @@ public class MediaCodecAudioEncoder extends MediaCodecEncoder {
 		MediaRecorder.AudioSource.VOICE_COMMUNICATION,
 		MediaRecorder.AudioSource.VOICE_RECOGNITION,
 	};
+
 
 	/**
 	 * Thread to capture audio data from internal mic as uncompressed 16bit PCM data
@@ -206,5 +207,11 @@ LOOP:	for (int i = 0; i < numCodecs; i++) {
         }
    		return result;
     }
+
+
+	@Override
+	public int onDataAvailable(VideoCaptureFrame data) {
+		return 0;
+	}
 
 }

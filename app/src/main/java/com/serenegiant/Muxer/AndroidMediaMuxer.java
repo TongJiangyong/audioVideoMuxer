@@ -32,11 +32,13 @@ import android.media.MediaFormat;
 import android.media.MediaMuxer;
 import android.util.Log;
 
+import com.serenegiant.encoder.BaseEncoder;
 import com.serenegiant.encoder.MediaCodecAudioEncoder;
 import com.serenegiant.encoder.MediaCodecEncoder;
 import com.serenegiant.encoder.MediaCodecVideoEncoder;
+import com.serenegiant.encoder.MediaEncoderFormat;
 
-public class AndroidMediaMuxer {
+public class AndroidMediaMuxer extends BaseMuxer{
 	private static final boolean DEBUG = true;	// TODO set false on release
 	private static final String TAG = "AndroidMediaMuxer";
 
@@ -55,6 +57,7 @@ public class AndroidMediaMuxer {
 	 * @throws IOException
 	 */
 	public AndroidMediaMuxer(String path) throws IOException {
+		super();
 		try {
 			mOutputPath = path;
 		} catch (final NullPointerException e) {
@@ -65,22 +68,26 @@ public class AndroidMediaMuxer {
 		mIsStarted = false;
 	}
 
-
-	public void prepare() throws IOException {
+	@Override
+	public void prepareEncoders() throws IOException {
 		if (mVideoEncoder != null)
 			mVideoEncoder.prepare();
 		if (mAudioEncoder != null)
 			mAudioEncoder.prepare();
 	}
 
-	public void startRecording() {
+
+	@Override
+	public void startEncoders() {
 		if (mVideoEncoder != null)
 			mVideoEncoder.startRecording();
 		if (mAudioEncoder != null)
 			mAudioEncoder.startRecording();
 	}
 
-	public void stopRecording() {
+
+	@Override
+	public void stopEncoders() {
 		if (mVideoEncoder != null)
 			mVideoEncoder.stopRecording();
 		mVideoEncoder = null;
@@ -89,7 +96,8 @@ public class AndroidMediaMuxer {
 		mAudioEncoder = null;
 	}
 
-	public synchronized boolean isStarted() {
+	@Override
+	public synchronized boolean isMuxerStarted() {
 		return mIsStarted;
 	}
 
@@ -99,15 +107,16 @@ public class AndroidMediaMuxer {
 	 * assign encoder to this calss. this is called from encoder.
 	 * @param encoder instance of MediaCodecVideoEncoder or MediaCodecAudioEncoder
 	 */
-	/*package*/ public void addEncoder(final MediaCodecEncoder encoder) {
+	@Override
+	/*package*/ public void addEncoder(final BaseEncoder encoder) {
 		if (encoder instanceof MediaCodecVideoEncoder) {
 			if (mVideoEncoder != null)
 				throw new IllegalArgumentException("Video encoder already added.");
-			mVideoEncoder = encoder;
+			mVideoEncoder = (MediaCodecEncoder)encoder;
 		} else if (encoder instanceof MediaCodecAudioEncoder) {
 			if (mAudioEncoder != null)
 				throw new IllegalArgumentException("Video encoder already added.");
-			mAudioEncoder = encoder;
+			mAudioEncoder = (MediaCodecEncoder)encoder;
 		} else
 			throw new IllegalArgumentException("unsupported encoder");
 		mEncoderCount = (mVideoEncoder != null ? 1 : 0) + (mAudioEncoder != null ? 1 : 0);
@@ -117,7 +126,8 @@ public class AndroidMediaMuxer {
 	 * request start recording from encoder
 	 * @return true when muxer is ready to write
 	 */
-	/*package*/ public synchronized boolean start() {
+	@Override
+	/*package*/ public synchronized boolean startMuxer() {
 		if (DEBUG) Log.v(TAG,  "start:");
 		mStatredCount++;
 		if ((mEncoderCount > 0) && (mStatredCount == mEncoderCount)) {
@@ -132,7 +142,8 @@ public class AndroidMediaMuxer {
 	/**
 	 * request stop recording from encoder when encoder received EOS
 	*/
-	/*package*/ public synchronized void stop() {
+	@Override
+	/*package*/ public synchronized void stopMuxer() {
 		if (DEBUG) Log.v(TAG,  "stop:mStatredCount=" + mStatredCount);
 		mStatredCount--;
 		if ((mEncoderCount > 0) && (mStatredCount <= 0)) {
@@ -148,23 +159,33 @@ public class AndroidMediaMuxer {
 	 * @param format
 	 * @return minus value indicate error
 	 */
-	/*package*/ public synchronized int addTrack(final MediaFormat format) {
+	@Override
+	/*package*/ public synchronized int addTrackToMuxer( MediaEncoderFormat format) {
 		if (mIsStarted)
 			throw new IllegalStateException("muxer already started");
-		final int trackIx = mMediaMuxer.addTrack(format);
-		if (DEBUG) Log.i(TAG, "addTrack:trackNum=" + mEncoderCount + ",trackIx=" + trackIx + ",format=" + format);
+		final int trackIx = mMediaMuxer.addTrack(format.getMediaFormat());
+		if (DEBUG) Log.i(TAG, "addTrack:" + mEncoderCount + ",trackIx=" + trackIx + ",format=" + format.getMediaFormat());
 		return trackIx;
 	}
 
 	/**
-	 * write encoded data to muxer
-	 * @param trackIndex
-	 * @param byteBuf
-	 * @param bufferInfo
+	 *
+	 * @param encodedFrame
 	 */
-	/*package*/ public synchronized void writeSampleData(final int trackIndex, final ByteBuffer byteBuf, final MediaCodec.BufferInfo bufferInfo) {
-		if (mStatredCount > 0)
-			mMediaMuxer.writeSampleData(trackIndex, byteBuf, bufferInfo);
+	@Override
+	/*package*/ protected synchronized void writeEncodedData(EncodedFrame encodedFrame) {
+		if (mStatredCount > 0){
+			if (DEBUG) Log.i(TAG, "addTrack:" + encodedFrame.getmTrackIndex() + ",BufferInfo=" + encodedFrame.getmBufferInfo());
+			mMediaMuxer.writeSampleData(encodedFrame.getmTrackIndex(), encodedFrame.getEncodedData(), encodedFrame.getmBufferInfo());
+		}
+
+
+	}
+
+	@Override
+	public int onDataAvailable(EncodedFrame data){
+		this.writeEncodedData(data);
+		return 0;
 	}
 
 }
