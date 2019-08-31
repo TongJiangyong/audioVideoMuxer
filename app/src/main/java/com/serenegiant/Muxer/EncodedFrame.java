@@ -10,13 +10,16 @@ import java.nio.ByteBuffer;
 
 public class EncodedFrame {
     private int mTrackIndex;
-    private ByteBuffer encodedData;
+    //0为音频 1为视频
+    private int codecType;
+    private ByteBuffer encodedByteBuffer;
     private MediaCodec.BufferInfo mBufferInfo;
 
-    public EncodedFrame(int mTrackIndex, ByteBuffer encodedData, MediaCodec.BufferInfo mBufferInfo) {
+    public EncodedFrame(int codecType, int mTrackIndex, ByteBuffer encodedByteBuffer, MediaCodec.BufferInfo mBufferInfo) {
         this.mTrackIndex = mTrackIndex;
-        this.encodedData = encodedData;
+        this.encodedByteBuffer = encodedByteBuffer;
         this.mBufferInfo = mBufferInfo;
+        this.codecType = codecType;
     }
 
     public int getmTrackIndex() {
@@ -27,12 +30,12 @@ public class EncodedFrame {
         this.mTrackIndex = mTrackIndex;
     }
 
-    public ByteBuffer getEncodedData() {
-        return encodedData;
+    public ByteBuffer getEncodedByteBuffer() {
+        return encodedByteBuffer;
     }
 
-    public void setEncodedData(ByteBuffer encodedData) {
-        this.encodedData = encodedData;
+    public void setEncodedByteBuffer(ByteBuffer encodedByteBuffer) {
+        this.encodedByteBuffer = encodedByteBuffer;
     }
 
     public MediaCodec.BufferInfo getmBufferInfo() {
@@ -41,5 +44,23 @@ public class EncodedFrame {
 
     public void setmBufferInfo(MediaCodec.BufferInfo mBufferInfo) {
         this.mBufferInfo = mBufferInfo;
+    }
+
+    public int getCodecType() {
+        return codecType;
+    }
+
+    public void setCodecType(int codecType) {
+        this.codecType = codecType;
+    }
+
+    @Override
+    public String toString() {
+        return "EncodedFrame{" +
+                "mTrackIndex=" + mTrackIndex +
+                ", codecType=" + codecType +
+                ", encodedByteBuffer=" + encodedByteBuffer +
+                ", mBufferInfo=" + mBufferInfo +
+                '}';
     }
 }

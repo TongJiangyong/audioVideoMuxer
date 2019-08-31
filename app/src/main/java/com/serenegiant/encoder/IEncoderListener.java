@@ -12,6 +12,7 @@ public interface IEncoderListener {
     public void onEncoderStopped(BaseEncoder mediaEncoder);
     public void onEncoderPrepared(BaseEncoder mediaEncoder);
     public void onEncoderReleased() throws Exception;
+    //should return the index of encoded data
     public int onEncoderOutPutBufferReady(MediaEncoderFormat mediaEncoderFormat) throws Exception;
 
 }

@@ -36,7 +36,6 @@ import com.serenegiant.Muxer.EncodedFrame;
 public abstract class MediaCodecEncoder extends BaseEncoder implements Runnable {
 	private static final boolean DEBUG = true;	// TODO set false on release
 	private static final String TAG = "MediaCodecEncoder";
-
 	protected static final int TIMEOUT_USEC = 10000;	// 10[msec]
 	protected static final int MSG_FRAME_AVAILABLE = 1;
 	protected static final int MSG_STOP_RECORDING = 9;
@@ -78,6 +77,8 @@ public abstract class MediaCodecEncoder extends BaseEncoder implements Runnable 
      * BufferInfo instance for dequeuing
      */
     private MediaCodec.BufferInfo mBufferInfo;		// API >= 16(Android4.1.2)
+
+	protected int codecType;
 
     protected final IEncoderListener mListener;
 
@@ -372,7 +373,7 @@ LOOP:	while (mIsCapturing) {
                     // write encoded data to muxer(need to adjust presentationTimeUs.
                    	mBufferInfo.presentationTimeUs = getPTSUs();
                    	//muxer.writeSampleData(mTrackIndex, encodedData, mBufferInfo);
-					mEncoderedDataConnector.onDataAvailable(new EncodedFrame(mTrackIndex,encodedData,mBufferInfo));
+					mEncoderedDataConnector.onDataAvailable(new EncodedFrame(codecType,mTrackIndex,encodedData,mBufferInfo));
 					prevOutputPTSUs = mBufferInfo.presentationTimeUs;
                 }
                 // return buffer to encoder

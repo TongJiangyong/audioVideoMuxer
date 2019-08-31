@@ -83,6 +83,7 @@ public class MediaCodecVideoEncoder extends MediaCodecEncoder {
 	public void prepare() throws IOException {
 		if (DEBUG) Log.i(TAG, "prepareEncoders: ");
         mTrackIndex = -1;
+		codecType = 1;
         mOutputBufferEnabled = mIsEOS = false;
 
         final MediaCodecInfo videoCodecInfo = selectVideoCodec(MIME_TYPE);

@@ -23,12 +23,9 @@ package com.serenegiant.Muxer;
 */
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.text.SimpleDateFormat;
 import java.util.Locale;
 
-import android.media.MediaCodec;
-import android.media.MediaFormat;
 import android.media.MediaMuxer;
 import android.util.Log;
 
@@ -134,7 +131,7 @@ public class AndroidMediaMuxer extends BaseMuxer{
 			mMediaMuxer.start();
 			mIsStarted = true;
 			notifyAll();
-			if (DEBUG) Log.v(TAG,  "MediaMuxer started:");
+			if (DEBUG) Log.v(TAG,  "MediaMuxer started");
 		}
 		return mIsStarted;
 	}
@@ -150,7 +147,7 @@ public class AndroidMediaMuxer extends BaseMuxer{
 			mMediaMuxer.stop();
 			mMediaMuxer.release();
 			mIsStarted = false;
-			if (DEBUG) Log.v(TAG,  "MediaMuxer stopped:");
+			if (DEBUG) Log.v(TAG,  "MediaMuxer stopped");
 		}
 	}
 
@@ -176,7 +173,7 @@ public class AndroidMediaMuxer extends BaseMuxer{
 	/*package*/ protected synchronized void writeEncodedData(EncodedFrame encodedFrame) {
 		if (mStatredCount > 0){
 			if (DEBUG) Log.i(TAG, "addTrack:" + encodedFrame.getmTrackIndex() + ",BufferInfo=" + encodedFrame.getmBufferInfo());
-			mMediaMuxer.writeSampleData(encodedFrame.getmTrackIndex(), encodedFrame.getEncodedData(), encodedFrame.getmBufferInfo());
+			mMediaMuxer.writeSampleData(encodedFrame.getmTrackIndex(), encodedFrame.getEncodedByteBuffer(), encodedFrame.getmBufferInfo());
 		}
 
 

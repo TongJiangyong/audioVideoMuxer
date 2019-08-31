@@ -56,6 +56,7 @@ public class MediaCodecAudioEncoder extends MediaCodecEncoder {
 	public void prepare() throws IOException {
 		if (DEBUG) Log.v(TAG, "prepareEncoders:");
         mTrackIndex = -1;
+		codecType = 0;
         mOutputBufferEnabled = mIsEOS = false;
         // prepareEncoders MediaCodec for AAC encoding of audio data from inernal mic.
         final MediaCodecInfo audioCodecInfo = selectAudioCodec(MIME_TYPE);
