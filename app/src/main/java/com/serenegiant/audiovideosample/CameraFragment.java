@@ -34,14 +34,15 @@ import android.view.ViewGroup;
 import android.widget.ImageButton;
 import android.widget.TextView;
 
-import com.serenegiant.Muxer.AndroidMediaMuxer;
-import com.serenegiant.Muxer.BaseMuxer;
-import com.serenegiant.Muxer.RtmpMuxer;
-import com.serenegiant.Muxer.StreamPublishParam;
+import com.serenegiant.encoder.AudioMediaData;
+import com.serenegiant.encoder.VideoEncoderDataPrepare;
+import com.serenegiant.encoder.VideoMediaData;
+import com.serenegiant.muxer.AndroidMediaMuxer;
+import com.serenegiant.muxer.BaseMuxer;
+import com.serenegiant.muxer.StreamPublishParam;
 import com.serenegiant.encoder.BaseEncoder;
 import com.serenegiant.encoder.IEncoderListener;
 import com.serenegiant.encoder.MediaCodecAudioEncoder;
-import com.serenegiant.encoder.MediaCodecEncoder;
 import com.serenegiant.encoder.MediaCodecVideoEncoder;
 import com.serenegiant.encoder.MediaEncoderFormat;
 
@@ -67,6 +68,9 @@ public class CameraFragment extends Fragment {
 	private BaseMuxer mMuxer;
 
 	private BaseEncoder audioEncoder,videoEncoder;
+	private VideoEncoderDataPrepare videoEncoderDataPrepare;
+	private VideoMediaData videoMediaData;
+	private AudioMediaData audioMediaData;
 
 	public CameraFragment() {
 		// need default constructor
@@ -140,14 +144,16 @@ public class CameraFragment extends Fragment {
 	private void startRecording() {
 		if (DEBUG) Log.v(TAG, "startEncoders:");
 		try {
+			videoMediaData = new VideoMediaData();
+			audioMediaData = new AudioMediaData();
 			mRecordButton.setColorFilter(0xffff0000);	// turn red
-			//mMuxer = new AndroidMediaMuxer("/sdcard/testAudioVideo.mp4");	// if you record audio only, ".m4a" is also OK.
+			mMuxer = new AndroidMediaMuxer("/sdcard/testAudioVideo.mp4");	// if you record audio only, ".m4a" is also OK.
 			StreamPublishParam streamPublishParam = new StreamPublishParam();
 			streamPublishParam.setRtmpUrl("rtmp://10.63.0.16:1935/live/room");
 			streamPublishParam.setOutputFilePath("/sdcard/testAudioVideo.flv");
 			streamPublishParam.setVideoHeight(1280);
 			streamPublishParam.setVideoWidth(720);
-			mMuxer = new RtmpMuxer(streamPublishParam);
+			//mMuxer = new RtmpMuxer(streamPublishParam);
 			if (true) {
 				// for video capturing
 				videoEncoder = new MediaCodecVideoEncoder(mMediaEncoderListener, mCameraView.getVideoWidth(), mCameraView.getVideoHeight());
@@ -174,10 +180,16 @@ public class CameraFragment extends Fragment {
 	private void stopRecording() {
 		if (DEBUG) Log.v(TAG, "stopEncoders:mMuxer=" + mMuxer);
 		mRecordButton.setColorFilter(0);	// return to default color
+
 		if (mMuxer != null) {
 			mMuxer.stopEncoders();
 			// you should not wait here
 		}
+
+		if(videoEncoderDataPrepare!=null){
+			videoEncoderDataPrepare.stopEncoderDataPrepare();
+		}
+
 	}
 
 	/**
@@ -190,14 +202,22 @@ public class CameraFragment extends Fragment {
 		public void onEncoderStopped(BaseEncoder mediaEncoder) {
 			if (DEBUG) Log.v(TAG, "onStopped:encoder=" + mediaEncoder);
 			if (mediaEncoder instanceof MediaCodecVideoEncoder)
-				mCameraView.setVideoEncoder(null);
+				mCameraView.setVideoCodecContext(null);
 		}
 
 		@Override
 		public void onEncoderPrepared(BaseEncoder mediaEncoder) {
 			if (DEBUG) Log.v(TAG, "onPrepared:encoder=" + mediaEncoder);
 			if (mediaEncoder instanceof MediaCodecVideoEncoder)
-				mCameraView.setVideoEncoder((MediaCodecVideoEncoder)mediaEncoder);
+			{
+				videoEncoderDataPrepare = new VideoEncoderDataPrepare();
+				videoEncoderDataPrepare.startEncoderDataPrepare(((MediaCodecVideoEncoder)videoEncoder).getEncoderInputSurface(),videoMediaData);
+				videoEncoderDataPrepare.getRawDataConnector().connect(videoEncoder);
+				mCameraView.setVideoCodecContext(videoEncoderDataPrepare);
+			}else if(mediaEncoder instanceof MediaCodecAudioEncoder){
+
+			}
+
 		}
 
 		@Override

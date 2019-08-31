@@ -1,9 +1,5 @@
 package com.serenegiant.encoder;
 
-import android.media.MediaFormat;
-
-import com.serenegiant.Muxer.BaseMuxer;
-
 /**
  * Created by yong on 2019/8/30.
  */

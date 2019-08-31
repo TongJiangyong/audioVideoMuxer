@@ -1,4 +1,4 @@
-package com.serenegiant.Muxer;
+package com.serenegiant.muxer;
 
 import android.media.MediaCodec;
 

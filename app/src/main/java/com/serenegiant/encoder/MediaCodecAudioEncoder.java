@@ -34,8 +34,6 @@ import android.media.MediaFormat;
 import android.media.MediaRecorder;
 import android.util.Log;
 
-import com.serenegiant.Muxer.AndroidMediaMuxer;
-
 public class MediaCodecAudioEncoder extends MediaCodecEncoder {
 	private static final boolean DEBUG = false;	// TODO set false on release
 	private static final String TAG = "MediaCodecAudioEncoder";

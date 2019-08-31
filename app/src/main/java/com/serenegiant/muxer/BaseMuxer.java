@@ -1,10 +1,9 @@
-package com.serenegiant.Muxer;
+package com.serenegiant.muxer;
 
 import com.serenegiant.connector.SinkConnector;
 import com.serenegiant.connector.SrcConnector;
 import com.serenegiant.encoder.BaseEncoder;
 import com.serenegiant.encoder.MediaEncoderFormat;
-import com.serenegiant.encoder.VideoCaptureFrame;
 
 import java.io.IOException;
 

@@ -1,4 +1,4 @@
-package com.serenegiant.Muxer;
+package com.serenegiant.muxer;
 /*
  * AudioVideoRecordingSample
  * Sample project to cature audio and video from internal mic/camera and save as MPEG4 file.
@@ -36,7 +36,7 @@ import com.serenegiant.encoder.MediaCodecVideoEncoder;
 import com.serenegiant.encoder.MediaEncoderFormat;
 
 public class AndroidMediaMuxer extends BaseMuxer{
-	private static final boolean DEBUG = true;	// TODO set false on release
+	private static final boolean DEBUG = false;	// TODO set false on release
 	private static final String TAG = "AndroidMediaMuxer";
 
 	private static final String DIR_NAME = "AVRecSample";

@@ -23,15 +23,13 @@ package com.serenegiant.encoder;
 */
 
 import java.io.IOException;
-import java.lang.ref.WeakReference;
 import java.nio.ByteBuffer;
 
 import android.media.MediaCodec;
 import android.media.MediaFormat;
 import android.util.Log;
 
-import com.serenegiant.Muxer.AndroidMediaMuxer;
-import com.serenegiant.Muxer.EncodedFrame;
+import com.serenegiant.muxer.EncodedFrame;
 
 public abstract class MediaCodecEncoder extends BaseEncoder implements Runnable {
 	private static final boolean DEBUG = true;	// TODO set false on release
@@ -78,7 +76,7 @@ public abstract class MediaCodecEncoder extends BaseEncoder implements Runnable 
      */
     private MediaCodec.BufferInfo mBufferInfo;		// API >= 16(Android4.1.2)
 
-	protected int codecType;
+	protected int codecType; //0为audio 1为video
 
     protected final IEncoderListener mListener;
 
@@ -108,11 +106,15 @@ public abstract class MediaCodecEncoder extends BaseEncoder implements Runnable 
      * @return return true if encoder is ready to encod.
      */
     public boolean frameAvailableSoon() {
-//    	if (DEBUG) Log.v(TAG, "frameAvailableSoon");
+    	if(codecType==1){
+			if (DEBUG) Log.d(TAG, "frameAvailableSoon");
+		}
+
         synchronized (mSync) {
             if (!mIsCapturing || mRequestStop) {
                 return false;
             }
+            //ZH 通过mRequestDrain的数量，来控制是否还继续下去？
             mRequestDrain++;
             mSync.notifyAll();
         }
@@ -134,16 +136,20 @@ public abstract class MediaCodecEncoder extends BaseEncoder implements Runnable 
         boolean localRequestStop;
         boolean localRequestDrain;
         while (isRunning) {
-        	Log.i("TJY","MediaCodecEncoder run MediaCodecEncoder");
+			Log.i("TJY", "MediaCodecEncoder run MediaCodecEncoder type：" + codecType+" mRequestStop:"+mRequestStop);
         	synchronized (mSync) {
         		localRequestStop = mRequestStop;
         		localRequestDrain = (mRequestDrain > 0);
+				if(codecType==1){
+					Log.i("TJY","video drain() mRequestDrain:"+mRequestDrain+" localRequestStop:"+localRequestStop);
+				}
         		if (localRequestDrain)
         			mRequestDrain--;
         	}
 	        if (localRequestStop) {
 	           	drain();
 	           	// request stop recording
+				Log.i("TJY","signalEndOfInputStream codecType "+codecType);
 	           	signalEndOfInputStream();
 	           	// process output data again for EOS signale
 	           	drain();
@@ -152,10 +158,14 @@ public abstract class MediaCodecEncoder extends BaseEncoder implements Runnable 
 	           	break;
 	        }
 	        if (localRequestDrain) {
+        		if(codecType==1){
+        			Log.i("TJY","video drain() mRequestDrain:"+mRequestDrain);
+				}
 	        	drain();
 	        } else {
 	        	synchronized (mSync) {
 		        	try {
+						Log.i("TJY","video drain() mSync.wait() mRequestDrain:"+mRequestDrain);
 						mSync.wait();
 					} catch (final InterruptedException e) {
 						break;
@@ -195,6 +205,7 @@ public abstract class MediaCodecEncoder extends BaseEncoder implements Runnable 
 			if (!mIsCapturing || mRequestStop) {
 				return;
 			}
+			if (DEBUG) Log.v(TAG, "try to stopEncoders codecType:"+codecType);
 			mRequestStop = true;	// for rejecting newer frame
 			mSync.notifyAll();
 	        // We can not know when the encoding and writing finish.
@@ -244,7 +255,7 @@ public abstract class MediaCodecEncoder extends BaseEncoder implements Runnable 
     }
 
     protected void signalEndOfInputStream() {
-		if (DEBUG) Log.d(TAG, "sending EOS to encoder");
+		if (DEBUG) Log.d(TAG, "sending EOS to encoder codecType"+codecType);
         // signalEndOfInputStream is only avairable for video encoding with surface
         // and equivalent sending a empty buffer with BUFFER_FLAG_END_OF_STREAM flag.
 //		mMediaCodec.signalEndOfInputStream();	// API >= 18
@@ -349,22 +360,22 @@ LOOP:	while (mIsCapturing) {
             	// unexpected status
             	if (DEBUG) Log.w(TAG, "drain:unexpected result from encoder#dequeueOutputBuffer: " + encoderStatus);
             } else {
-                final ByteBuffer encodedData = encoderOutputBuffers[encoderStatus];
+				final ByteBuffer encodedData = encoderOutputBuffers[encoderStatus];
                 if (encodedData == null) {
                 	// this never should come...may be a MediaCodec internal error
                     throw new RuntimeException("encoderOutputBuffer " + encoderStatus + " was null");
                 }
-                if ((mBufferInfo.flags & MediaCodec.BUFFER_FLAG_CODEC_CONFIG) != 0) {
+
+				if ((mBufferInfo.flags & MediaCodec.BUFFER_FLAG_CODEC_CONFIG) != 0) {
                 	// You shoud set output format to muxer here when you target Android4.3 or less
                 	// but MediaCodec#getOutputFormat can not call here(because INFO_OUTPUT_FORMAT_CHANGED don't come yet)
                 	// therefor we should expand and prepareEncoders output format from buffer data.
                 	// This sample is for API>=18(>=Android 4.3), just ignore this flag here
 					if (DEBUG) Log.d(TAG, "drain:BUFFER_FLAG_CODEC_CONFIG");
 					//remove this,may cause trouble in local record
-					//mBufferInfo.size = 0;
+					mBufferInfo.size = 0;
                 }
-
-                if (mBufferInfo.size != 0) {
+				if (mBufferInfo.size != 0) {
                 	// encoded data is ready, clear waiting counter
             		count = 0;
                     if (!mOutputBufferEnabled) {

@@ -18,7 +18,7 @@
  *
  */
 
-package com.serenegiant.Muxer;
+package com.serenegiant.muxer;
 
 import android.os.Handler;
 import android.os.HandlerThread;

@@ -49,6 +49,9 @@ import android.view.SurfaceHolder;
 import android.view.WindowManager;
 
 import com.serenegiant.encoder.MediaCodecVideoEncoder;
+import com.serenegiant.encoder.VideoCaptureFrame;
+import com.serenegiant.encoder.VideoEncoderDataPrepare;
+import com.serenegiant.gles.core.GlUtil;
 import com.serenegiant.glutils.GLDrawer2D;
 
 /**
@@ -173,16 +176,16 @@ public final class CameraGLView extends GLSurfaceView {
 		super.surfaceDestroyed(holder);
 	}
 
-	public void setVideoEncoder(final MediaCodecVideoEncoder encoder) {
-		if (DEBUG) Log.v(TAG, "setVideoEncoder:tex_id=" + mRenderer.hTex + ",encoder=" + encoder);
+	public void setVideoCodecContext(final VideoEncoderDataPrepare videoDataPrepare) {
+		if (DEBUG) Log.v(TAG, "setVideoCodecContext:tex_id=" + mRenderer.hTex + ", videoDataPrepare=" + videoDataPrepare);
 		queueEvent(new Runnable() {
 			@Override
 			public void run() {
 				synchronized (mRenderer) {
-					if (encoder != null) {
-						encoder.setEglContext(EGL14.eglGetCurrentContext(), mRenderer.hTex);
+					if (videoDataPrepare != null) {
+						videoDataPrepare.initEncoderContext(EGL14.eglGetCurrentContext());
 					}
-					mRenderer.mVideoEncoder = encoder;
+					mRenderer.videoEncoderDataPrepare = videoDataPrepare;
 				}
 			}
 		});
@@ -212,7 +215,8 @@ public final class CameraGLView extends GLSurfaceView {
 		private GLDrawer2D mDrawer;
 		private final float[] mStMatrix = new float[16];
 		private final float[] mMvpMatrix = new float[16];
-		private MediaCodecVideoEncoder mVideoEncoder;
+		private VideoEncoderDataPrepare videoEncoderDataPrepare;
+		private float[] mMVP = new float[16];
 
 		public CameraSurfaceRenderer(final CameraGLView parent) {
 			if (DEBUG) Log.v(TAG, "CameraSurfaceRenderer:");
@@ -275,8 +279,8 @@ public final class CameraGLView extends GLSurfaceView {
 		private final void updateViewport() {
 			final CameraGLView parent = mWeakParent.get();
 			if (parent != null) {
-				final int view_width = parent.getWidth();
-				final int view_height = parent.getHeight();
+				int view_width = parent.getWidth();
+				int view_height = parent.getHeight();
 				Log.i(TAG,"view_width:"+view_width+" view_height"+view_height);
 				GLES20.glViewport(0, 0, view_width, view_height);
 				GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT);
@@ -335,6 +339,7 @@ public final class CameraGLView extends GLSurfaceView {
 
 		private volatile boolean requesrUpdateTex = false;
 		private boolean flip = true;
+		private int count = 0 ;
 		/**
 		 * drawing to GLSurface
 		 * we set renderMode to GLSurfaceView.RENDERMODE_WHEN_DIRTY,
@@ -344,7 +349,7 @@ public final class CameraGLView extends GLSurfaceView {
 		@Override
 		public void onDrawFrame(final GL10 unused) {
 			GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT);
-
+			count++;
 			if (requesrUpdateTex) {
 				requesrUpdateTex = false;
 				// update texture(came from camera)
@@ -357,10 +362,15 @@ public final class CameraGLView extends GLSurfaceView {
 			flip = !flip;
 			if (flip) {	// ~30fps
 				synchronized (this) {
-					if (mVideoEncoder != null) {
+					if (videoEncoderDataPrepare != null) {
+						final CameraGLView parent = mWeakParent.get();
+						mMVP = GlUtil.changeMVPMatrix(GlUtil.IDENTITY_MATRIX, parent.getWidth(), parent.getHeight(),
+								parent.getVideoHeight(), parent.getVideoHeight());
 						// notify to capturing thread that the camera frame is available.
 //						mVideoEncoder.frameAvailableSoon(mStMatrix);
-						mVideoEncoder.frameAvailableSoon(mStMatrix, mMvpMatrix);
+						VideoCaptureFrame videoCaptureFrame= new VideoCaptureFrame(mSTexture,hTex,mMVP,count);
+						Log.i("TJY","videoEncoderDataPrepare.frameAvailable:"+videoCaptureFrame+" time:"+mSTexture.getTimestamp());
+						videoEncoderDataPrepare.frameAvailable(videoCaptureFrame);
 					}
 				}
 			}

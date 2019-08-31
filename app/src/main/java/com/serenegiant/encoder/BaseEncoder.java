@@ -1,6 +1,6 @@
 package com.serenegiant.encoder;
 
-import com.serenegiant.Muxer.EncodedFrame;
+import com.serenegiant.muxer.EncodedFrame;
 import com.serenegiant.connector.SinkConnector;
 import com.serenegiant.connector.SrcConnector;
 

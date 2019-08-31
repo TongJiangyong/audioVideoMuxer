@@ -1,4 +1,4 @@
-package com.serenegiant.Muxer;
+package com.serenegiant.muxer;
 /*
  * AudioVideoRecordingSample
  * Sample project to cature audio and video from internal mic/camera and save as MPEG4 file.

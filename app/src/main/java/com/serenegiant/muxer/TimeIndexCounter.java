@@ -18,7 +18,7 @@
  *
  */
 
-package com.serenegiant.Muxer;
+package com.serenegiant.muxer;
 
 /**
  * Created by Chilling on 2017/12/23.

@@ -32,11 +32,9 @@ import android.opengl.EGLContext;
 import android.util.Log;
 import android.view.Surface;
 
-import com.serenegiant.Muxer.AndroidMediaMuxer;
-import com.serenegiant.glutils.RenderHandler;
 
 public class MediaCodecVideoEncoder extends MediaCodecEncoder {
-	private static final boolean DEBUG = false;	// TODO set false on release
+	private static final boolean DEBUG = true;	// TODO set false on release
 	private static final String TAG = "MediaCodecVideoEncoder";
 
 	private static final String MIME_TYPE = "video/avc";
@@ -46,38 +44,20 @@ public class MediaCodecVideoEncoder extends MediaCodecEncoder {
 
     private final int mWidth;
     private final int mHeight;
-    private RenderHandler mRenderHandler;
-    private Surface mSurface;
+	private Surface mSurface;
 
 	public MediaCodecVideoEncoder(final IEncoderListener listener, final int width, final int height) {
 		super(listener);
 		if (DEBUG) Log.i(TAG, "MediaCodecVideoEncoder: ");
 		mWidth = width;
 		mHeight = height;
-		mRenderHandler = RenderHandler.createHandler(TAG);
 	}
 
-	public boolean frameAvailableSoon(final float[] tex_matrix) {
-		boolean result;
-		if (result = super.frameAvailableSoon())
-			mRenderHandler.draw(tex_matrix);
-		return result;
+	public Surface getEncoderInputSurface(){
+		return mSurface;
 	}
 
-	public boolean frameAvailableSoon(final float[] tex_matrix, final float[] mvp_matrix) {
-		boolean result;
-		if (result = super.frameAvailableSoon())
-			mRenderHandler.draw(tex_matrix, mvp_matrix);
-		return result;
-	}
 
-	@Override
-	public boolean frameAvailableSoon() {
-		boolean result;
-		if (result = super.frameAvailableSoon())
-			mRenderHandler.draw(null);
-		return result;
-	}
 
 	@Override
 	public void prepare() throws IOException {
@@ -107,6 +87,7 @@ public class MediaCodecVideoEncoder extends MediaCodecEncoder {
         // get Surface for encoder input
         // this method only can call between #configure and #start
         mSurface = mMediaCodec.createInputSurface();	// API >= 18
+		if (DEBUG) Log.i(TAG, "prepareEncoders mSurface:"+mSurface);
         mMediaCodec.start();
         if (DEBUG) Log.i(TAG, "prepareEncoders finishing");
         if (mListener != null) {
@@ -118,9 +99,6 @@ public class MediaCodecVideoEncoder extends MediaCodecEncoder {
         }
 	}
 
-	public void setEglContext(final EGLContext shared_context, final int tex_id) {
-		mRenderHandler.setEglContext(shared_context, tex_id, mSurface, true);
-	}
 
 	@Override
     protected void release() {
@@ -128,10 +106,6 @@ public class MediaCodecVideoEncoder extends MediaCodecEncoder {
 		if (mSurface != null) {
 			mSurface.release();
 			mSurface = null;
-		}
-		if (mRenderHandler != null) {
-			mRenderHandler.release();
-			mRenderHandler = null;
 		}
 		super.release();
 	}
@@ -227,13 +201,17 @@ public class MediaCodecVideoEncoder extends MediaCodecEncoder {
 
     @Override
     protected void signalEndOfInputStream() {
-		if (DEBUG) Log.d(TAG, "sending EOS to encoder");
+		if (DEBUG) Log.d(TAG, "sending EOS to encoder codecType"+codecType);
 		mMediaCodec.signalEndOfInputStream();	// API >= 18
 		mIsEOS = true;
 	}
 
 	@Override
 	public int onDataAvailable(VideoCaptureFrame data) {
+		if(mRequestStop){
+			return 0;
+		}
+		super.frameAvailableSoon();
 		return 0;
 	}
 }

@@ -4,6 +4,9 @@ import android.media.AudioFormat;
 import android.media.AudioRecord;
 import android.util.Log;
 
+import com.serenegiant.connector.SrcConnector;
+import com.serenegiant.muxer.EncodedFrame;
+
 import java.nio.ByteBuffer;
 
 /**
@@ -11,7 +14,11 @@ import java.nio.ByteBuffer;
  */
 
 //audio collect thread
-public class AudioEncoderPrepare {
+public class AudioRecordThread extends BaseAudioCapture{
+    public AudioRecordThread(){
+        super();
+    }
+
 
 
 }
