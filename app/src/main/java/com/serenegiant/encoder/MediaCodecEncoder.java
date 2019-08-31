@@ -360,7 +360,8 @@ LOOP:	while (mIsCapturing) {
                 	// therefor we should expand and prepareEncoders output format from buffer data.
                 	// This sample is for API>=18(>=Android 4.3), just ignore this flag here
 					if (DEBUG) Log.d(TAG, "drain:BUFFER_FLAG_CODEC_CONFIG");
-					mBufferInfo.size = 0;
+					//remove this,may cause trouble in local record
+					//mBufferInfo.size = 0;
                 }
 
                 if (mBufferInfo.size != 0) {
