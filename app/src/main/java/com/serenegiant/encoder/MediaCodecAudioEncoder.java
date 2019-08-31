@@ -71,6 +71,8 @@ public class MediaCodecAudioEncoder extends MediaCodecEncoder {
 		audioFormat.setInteger(MediaFormat.KEY_CHANNEL_MASK, AudioFormat.CHANNEL_IN_MONO);
 		audioFormat.setInteger(MediaFormat.KEY_BIT_RATE, BIT_RATE);
 		audioFormat.setInteger(MediaFormat.KEY_CHANNEL_COUNT, 1);
+		audioFormat.setInteger(MediaFormat.KEY_BITRATE_MODE,
+				MediaCodecInfo.EncoderCapabilities.BITRATE_MODE_VBR);
 //		audioFormat.setLong(MediaFormat.KEY_MAX_INPUT_SIZE, inputFile.length());
 //      audioFormat.setLong(MediaFormat.KEY_DURATION, (long)durationInMs );
 		if (DEBUG) Log.i(TAG, "format: " + audioFormat);

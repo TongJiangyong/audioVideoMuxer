@@ -98,6 +98,8 @@ public class MediaCodecVideoEncoder extends MediaCodecEncoder {
         format.setInteger(MediaFormat.KEY_BIT_RATE, calcBitRate());
         format.setInteger(MediaFormat.KEY_FRAME_RATE, FRAME_RATE);
         format.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 10);
+		format.setInteger(MediaFormat.KEY_BITRATE_MODE,
+				MediaCodecInfo.EncoderCapabilities.BITRATE_MODE_VBR);
 		if (DEBUG) Log.i(TAG, "format: " + format);
 
         mMediaCodec = MediaCodec.createEncoderByType(MIME_TYPE);

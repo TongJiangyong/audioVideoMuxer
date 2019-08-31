@@ -56,7 +56,7 @@ import com.serenegiant.glutils.GLDrawer2D;
  */
 public final class CameraGLView extends GLSurfaceView {
 
-	private static final boolean DEBUG = false; // TODO set false on release
+	private static final boolean DEBUG = true; // TODO set false on release
 	private static final String TAG = "CameraGLView";
 
 	private static final int CAMERA_ID = 0;
@@ -277,10 +277,12 @@ public final class CameraGLView extends GLSurfaceView {
 			if (parent != null) {
 				final int view_width = parent.getWidth();
 				final int view_height = parent.getHeight();
+				Log.i(TAG,"view_width:"+view_width+" view_height"+view_height);
 				GLES20.glViewport(0, 0, view_width, view_height);
 				GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT);
 				final double video_width = parent.mVideoWidth;
 				final double video_height = parent.mVideoHeight;
+				Log.i(TAG,"video_width:"+video_width+" video_height"+video_height);
 				if (video_width == 0 || video_height == 0) return;
 				Matrix.setIdentityM(mMvpMatrix, 0);
 				final double view_aspect = view_width / (double)view_height;
