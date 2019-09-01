@@ -35,6 +35,7 @@ import android.widget.ImageButton;
 import android.widget.TextView;
 
 import com.serenegiant.encoder.AudioMediaData;
+import com.serenegiant.audio_capture.AudioRecordThread;
 import com.serenegiant.encoder.VideoEncoderDataPrepare;
 import com.serenegiant.encoder.VideoMediaData;
 import com.serenegiant.muxer.AndroidMediaMuxer;
@@ -71,7 +72,7 @@ public class CameraFragment extends Fragment {
 	private VideoEncoderDataPrepare videoEncoderDataPrepare;
 	private VideoMediaData videoMediaData;
 	private AudioMediaData audioMediaData;
-
+	private AudioRecordThread audioRecordThread;
 	public CameraFragment() {
 		// need default constructor
 	}
@@ -185,6 +186,9 @@ public class CameraFragment extends Fragment {
 			mMuxer.stopEncoders();
 			// you should not wait here
 		}
+		if(audioRecordThread!=null){
+			audioRecordThread.stopAudioRecord();
+		}
 
 		if(videoEncoderDataPrepare!=null){
 			videoEncoderDataPrepare.stopEncoderDataPrepare();
@@ -208,14 +212,17 @@ public class CameraFragment extends Fragment {
 		@Override
 		public void onEncoderPrepared(BaseEncoder mediaEncoder) {
 			if (DEBUG) Log.v(TAG, "onPrepared:encoder=" + mediaEncoder);
+			//very important to put data when encoder all complete
 			if (mediaEncoder instanceof MediaCodecVideoEncoder)
 			{
 				videoEncoderDataPrepare = new VideoEncoderDataPrepare();
-				videoEncoderDataPrepare.startEncoderDataPrepare(((MediaCodecVideoEncoder)videoEncoder).getEncoderInputSurface(),videoMediaData);
-				videoEncoderDataPrepare.getRawDataConnector().connect(videoEncoder);
+				videoEncoderDataPrepare.startEncoderDataPrepare(((MediaCodecVideoEncoder)mediaEncoder).getEncoderInputSurface(),videoMediaData);
+				videoEncoderDataPrepare.getRawDataConnector().connect(mediaEncoder);
 				mCameraView.setVideoCodecContext(videoEncoderDataPrepare);
 			}else if(mediaEncoder instanceof MediaCodecAudioEncoder){
-
+				audioRecordThread = new AudioRecordThread();
+				audioRecordThread.getCaptureDataConnector().connect(mediaEncoder);
+				audioRecordThread.startAudioRecord();
 			}
 
 		}
@@ -230,6 +237,9 @@ public class CameraFragment extends Fragment {
 			}
 		}
 
+
+
+		//only if outputBUffer ready ，muxer can write data
 		@Override
 		public int onEncoderOutPutBufferReady(MediaEncoderFormat mediaEncoderFormat) throws InterruptedException {
 			int trackIndex = mMuxer.addTrackToMuxer(mediaEncoderFormat);

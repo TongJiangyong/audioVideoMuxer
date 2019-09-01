@@ -3,6 +3,7 @@ package com.serenegiant.encoder;
 import android.graphics.SurfaceTexture;
 import android.opengl.Matrix;
 
+import java.nio.ByteBuffer;
 import java.util.Arrays;
 
 public class VideoCaptureFrame {
@@ -17,6 +18,14 @@ public class VideoCaptureFrame {
     public SurfaceTexture mSurfaceTexture;
     public boolean mMirror;
     public int mCount;
+    public ByteBuffer mBuffer;  //audio
+    public int mLength;          //audio
+
+    public VideoCaptureFrame(ByteBuffer buffer,int length,long timeStamp){
+        this.mBuffer = buffer;
+        this.mLength = length;
+        this.mTimeStamp = timeStamp;
+    }
     public VideoCaptureFrame(SurfaceTexture texture,int textureId,float[] mvpMatrix,int count){
         mCount = count;
         mSurfaceTexture = texture;
