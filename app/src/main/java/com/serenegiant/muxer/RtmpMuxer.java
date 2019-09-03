@@ -35,7 +35,8 @@ import com.serenegiant.encoder.MediaCodecEncoder;
 import com.serenegiant.encoder.MediaCodecVideoEncoder;
 import com.serenegiant.encoder.MediaEncoderFormat;
 
-import net.butterflytv.rtmp_client.RTMPMuxer;
+import io.agora.RTMPMuxer;
+
 
 public class RtmpMuxer extends BaseMuxer{
     private static final boolean DEBUG = true;	// TODO set false on release
@@ -67,16 +68,21 @@ public class RtmpMuxer extends BaseMuxer{
     }
 
     private void initRtmpMuxer(StreamPublishParam publishParam){
-        int open = mRtmpMuxer.open(publishParam.getRtmpUrl(),
-                publishParam.getVideoWidth(), publishParam.getVideoHeight());
-        if (DEBUG) Log.v(TAG,  "initRtmpMuxer open:"+open);
-        int connected = mRtmpMuxer.isConnected();
-        if(connected>0){
+        this.mStreamPublishParam = publishParam;
+        int open = mRtmpMuxer.open(this.mStreamPublishParam.getRtmpUrl(),
+                this.mStreamPublishParam.getVideoWidth(), this.mStreamPublishParam.getVideoHeight());
+        if (DEBUG) Log.d(TAG,  "initRtmpMuxer open:"+open);
+        boolean connected = mRtmpMuxer.isConnected();
+        //int connected = mRtmpMuxer.isConnected();
+        //if(connected>0){
+        if(connected){
             mIsConnected = true;
         }
-        if (DEBUG) Log.v(TAG,  "initRtmpMuxer connected:"+connected+ " mIsConnected:"+mIsConnected);
-        mRtmpMuxer.file_open(publishParam.getOutputFilePath());
-        mRtmpMuxer.write_flv_header(true, true);
+        if (DEBUG) Log.d(TAG,  "initRtmpMuxer connected:"+connected+ " mIsConnected:"+mIsConnected);
+        if(mStreamPublishParam.isNeedLocalWrite()){
+            mRtmpMuxer.file_open(this.mStreamPublishParam.getOutputFilePath());
+            mRtmpMuxer.write_flv_header(true, true);
+        }
         videoTimeIndexCounter.reset();
         audioTimeIndexCounter.reset();
         frameSender = new FrameSender(new FrameSender.FrameSenderCallback() {
@@ -85,13 +91,13 @@ public class RtmpMuxer extends BaseMuxer{
 
             @Override
             public void onSendVideo(FramePool.Frame sendFrame) {
-                if (DEBUG) Log.v(TAG,  "onSendVideo "+sendFrame.length);
+                if (DEBUG) Log.d(TAG,  "onSendVideo "+sendFrame.length);
                 mRtmpMuxer.writeVideo(sendFrame.data, 0, sendFrame.length, sendFrame.bufferInfo.getTotalTime());
             }
 
             @Override
             public void onSendAudio(FramePool.Frame sendFrame) {
-                if (DEBUG) Log.v(TAG,  "onSendAudio "+sendFrame.length);
+                if (DEBUG) Log.d(TAG,  "onSendAudio "+sendFrame.length);
                 mRtmpMuxer.writeAudio(sendFrame.data, 0, sendFrame.length, sendFrame.bufferInfo.getTotalTime());
             }
 
@@ -157,12 +163,12 @@ public class RtmpMuxer extends BaseMuxer{
      */
     @Override
 	/*package*/ public synchronized boolean startMuxer() {
-        if (DEBUG) Log.v(TAG,  "start");
+        if (DEBUG) Log.d(TAG,  "start");
         mStatredCount++;
         if ((mEncoderCount > 0) && (mStatredCount == mEncoderCount)) {
             mIsStarted = true;
             notifyAll();
-            if (DEBUG) Log.v(TAG,  "MediaMuxer started mIsStarted:"+mIsStarted+ " mIsConnected:"+mIsConnected);
+            if (DEBUG) Log.d(TAG,  "MediaMuxer started mIsStarted:"+mIsStarted+ " mIsConnected:"+mIsConnected);
         }
         return mIsStarted&&mIsConnected;
     }
@@ -172,13 +178,15 @@ public class RtmpMuxer extends BaseMuxer{
      */
     @Override
 	/*package*/ public synchronized void stopMuxer() {
-        if (DEBUG) Log.v(TAG,  "stop:mStatredCount=" + mStatredCount);
+        if (DEBUG) Log.d(TAG,  "stop:mStatredCount=" + mStatredCount);
         mStatredCount--;
         if ((mEncoderCount > 0) && (mStatredCount <= 0)) {
-            mRtmpMuxer.file_close();
+            if(mStreamPublishParam.isNeedLocalWrite()) {
+                mRtmpMuxer.file_close();
+            }
             mRtmpMuxer.close();
             mIsStarted = false;
-            if (DEBUG) Log.v(TAG,  "MediaMuxer stopped:");
+            if (DEBUG) Log.d(TAG,  "MediaMuxer stopped:");
         }
     }
 

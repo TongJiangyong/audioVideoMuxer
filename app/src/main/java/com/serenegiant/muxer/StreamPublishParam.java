@@ -7,6 +7,7 @@ package com.serenegiant.muxer;
 public class StreamPublishParam {
     private String outputFilePath;
     private String rtmpUrl;
+    private boolean isNeedLocalWrite;
     private int videoWidth;
     private int videoHeight;
 
@@ -40,5 +41,13 @@ public class StreamPublishParam {
 
     public void setOutputFilePath(String outputFilePath) {
         this.outputFilePath = outputFilePath;
+    }
+
+    public boolean isNeedLocalWrite() {
+        return isNeedLocalWrite;
+    }
+
+    public void setNeedLocalWrite(boolean needLocalWrite) {
+        isNeedLocalWrite = needLocalWrite;
     }
 }

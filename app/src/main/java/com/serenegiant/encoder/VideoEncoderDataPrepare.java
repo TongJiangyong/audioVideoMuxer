@@ -125,7 +125,7 @@ public class VideoEncoderDataPrepare implements Runnable, SinkConnector<VideoCap
                 return;
             }
         }
-        Log.i("TJY","try to frameAvailable:"+videoCaptureFrame+" mReady:"+mReady);
+        //Log.i("TJY","try to frameAvailable:"+videoCaptureFrame+" mReady:"+mReady);
         mHandler.sendMessage(mHandler.obtainMessage(MSG_FRAME_AVAILABLE, videoCaptureFrame));
     }
 

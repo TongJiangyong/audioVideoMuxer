@@ -38,6 +38,7 @@ import com.serenegiant.audio_capture.AudioCaptureThread;
 import com.serenegiant.encoder.AudioMediaData;
 import com.serenegiant.encoder.VideoEncoderDataPrepare;
 import com.serenegiant.encoder.VideoMediaData;
+import com.serenegiant.muxer.AndroidMediaMuxer;
 import com.serenegiant.muxer.BaseMuxer;
 import com.serenegiant.muxer.RtmpMuxer;
 import com.serenegiant.muxer.StreamPublishParam;
@@ -152,6 +153,7 @@ public class CameraFragment extends Fragment {
 			StreamPublishParam streamPublishParam = new StreamPublishParam();
 			streamPublishParam.setRtmpUrl("rtmp://10.63.0.16:1935/live/room");
 			streamPublishParam.setOutputFilePath("/sdcard/testAudioVideo.flv");
+			streamPublishParam.setNeedLocalWrite(true);
 			streamPublishParam.setVideoHeight(1280);
 			streamPublishParam.setVideoWidth(720);
 			mMuxer = new RtmpMuxer(streamPublishParam);

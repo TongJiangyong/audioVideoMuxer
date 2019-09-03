@@ -141,9 +141,6 @@ public abstract class MediaCodecEncoder extends BaseEncoder implements Runnable 
         	synchronized (mSync) {
         		localRequestStop = mRequestStop;
         		localRequestDrain = (mRequestDrain > 0);
-				if(codecType==1){
-					Log.i("TJY","video drain() mRequestDrain:"+mRequestDrain+" localRequestStop:"+localRequestStop);
-				}
         		if (localRequestDrain)
         			mRequestDrain--;
         	}
