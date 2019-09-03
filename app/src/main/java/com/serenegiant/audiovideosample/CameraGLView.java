@@ -368,7 +368,7 @@ public final class CameraGLView extends GLSurfaceView {
 								parent.getVideoHeight(), parent.getVideoHeight());
 						// notify to capturing thread that the camera frame is available.
 //						mVideoEncoder.frameAvailableSoon(mStMatrix);
-						VideoCaptureFrame videoCaptureFrame= new VideoCaptureFrame(mSTexture,hTex,mMVP,count);
+						VideoCaptureFrame videoCaptureFrame= new VideoCaptureFrame(mSTexture,hTex,mMvpMatrix,count);
 						Log.i("TJY","videoEncoderDataPrepare.frameAvailable:"+videoCaptureFrame+" time:"+mSTexture.getTimestamp());
 						videoEncoderDataPrepare.frameAvailable(videoCaptureFrame);
 					}

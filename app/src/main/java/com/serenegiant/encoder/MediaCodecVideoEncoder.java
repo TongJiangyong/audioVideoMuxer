@@ -101,7 +101,7 @@ public class MediaCodecVideoEncoder extends MediaCodecEncoder {
 
 
 	@Override
-    protected void release() {
+    public void release() {
 		if (DEBUG) Log.i(TAG, "release:");
 		if (mSurface != null) {
 			mSurface.release();

@@ -14,26 +14,29 @@ import java.nio.ByteBuffer;
  */
 
 //audio collect thread
-public class AudioRecordThread extends BaseAudioCapture{
-    private final String TAG= "AudioRecordThread";
+public class AudioCaptureThread extends BaseAudioCapture{
+    private final String TAG= "AudioCaptureThread";
     private static final int SAMPLE_RATE = 44100;	// 44.1[KHz] is only setting guaranteed to be available on all devices.
     public static final int SAMPLES_PER_FRAME = 1024;	// AAC, bytes/frame/channel
     public static final int FRAMES_PER_BUFFER = 25; 	// AAC, frame/buffer/sec
     private static final boolean DEBUG = true;	// TODO set false on release
-    private AudioThread mAudioThread = null;
+    private AudioRecordThread mAudioRecordThread = null;
     private boolean mIsCapturing = false;
-    public AudioRecordThread(){
+    public AudioCaptureThread(){
         super();
     }
-    public void startAudioRecord(){
-        if (mAudioThread == null) {
+
+    @Override
+    public void startAudioCapture(){
+        if (mAudioRecordThread == null) {
             mIsCapturing = true;
-            mAudioThread = new AudioThread();
-            mAudioThread.start();
+            mAudioRecordThread = new AudioRecordThread();
+            mAudioRecordThread.start();
         }
     }
 
-    public void stopAudioRecord(){
+    @Override
+    public void stopAudioCapture(){
         mIsCapturing = false;
     }
 
@@ -41,7 +44,7 @@ public class AudioRecordThread extends BaseAudioCapture{
      * Thread to capture audio data from internal mic as uncompressed 16bit PCM data
      * and write them to the MediaCodec encoder
      */
-    private class AudioThread extends Thread {
+    private class AudioRecordThread extends Thread {
         @Override
         public void run() {
             android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_URGENT_AUDIO);
@@ -69,7 +72,7 @@ public class AudioRecordThread extends BaseAudioCapture{
                 if (audioRecord != null) {
                     try {
                         if (mIsCapturing) {
-                            if (DEBUG) Log.d(TAG, "AudioThread:start audio recording");
+                            if (DEBUG) Log.d(TAG, "AudioRecordThread:start audio recording");
                             final ByteBuffer buf = ByteBuffer.allocateDirect(SAMPLES_PER_FRAME);
                             int readBytes;
                             audioRecord.startRecording();
@@ -100,9 +103,9 @@ public class AudioRecordThread extends BaseAudioCapture{
                     Log.e(TAG, "failed to initialize AudioRecord");
                 }
             } catch (final Exception e) {
-                Log.e(TAG, "AudioThread#run", e);
+                Log.e(TAG, "AudioRecordThread#run", e);
             }
-            if (DEBUG) Log.v(TAG, "AudioThread:finished");
+            if (DEBUG) Log.v(TAG, "AudioRecordThread:finished");
         }
     }
 

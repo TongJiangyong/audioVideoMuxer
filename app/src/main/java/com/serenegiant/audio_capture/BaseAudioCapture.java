@@ -7,7 +7,7 @@ import com.serenegiant.encoder.VideoCaptureFrame;
  * Created by lixiaochen on 2019/9/1.
  */
 
-public class BaseAudioCapture {
+public abstract class BaseAudioCapture {
     protected SrcConnector<VideoCaptureFrame> mCaptureDataConnector;
     public BaseAudioCapture(){
         mCaptureDataConnector =  new SrcConnector<>();
@@ -15,4 +15,10 @@ public class BaseAudioCapture {
     public SrcConnector<VideoCaptureFrame> getCaptureDataConnector() {
         return mCaptureDataConnector;
     }
+
+    //start audio record
+    public abstract void startAudioCapture();
+
+    //stop audio record
+    public abstract void stopAudioCapture();
 }

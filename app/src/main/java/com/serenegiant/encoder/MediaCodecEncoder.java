@@ -105,6 +105,7 @@ public abstract class MediaCodecEncoder extends BaseEncoder implements Runnable 
      * the method to indicate frame data is soon available or already available
      * @return return true if encoder is ready to encod.
      */
+
     public boolean frameAvailableSoon() {
     	if(codecType==1){
 			if (DEBUG) Log.d(TAG, "frameAvailableSoon");
@@ -185,9 +186,11 @@ public abstract class MediaCodecEncoder extends BaseEncoder implements Runnable 
     * this method should be implemented in sub class, so set this as abstract method
     * @throws IOException
     */
-   /*package*/ public abstract void prepare() throws IOException;
+	@Override
+    public abstract void prepare() throws IOException;
 
-	/*package*/ public void startRecording() {
+	@Override
+	public void startRecording() {
    	if (DEBUG) Log.v(TAG, "startEncoders");
 		synchronized (mSync) {
 			mIsCapturing = true;
@@ -199,7 +202,8 @@ public abstract class MediaCodecEncoder extends BaseEncoder implements Runnable 
    /**
     * the method to request stop encoding
     */
-	/*package*/ public void stopRecording() {
+   @Override
+   public void stopRecording() {
 		if (DEBUG) Log.v(TAG, "stopEncoders");
 		synchronized (mSync) {
 			if (!mIsCapturing || mRequestStop) {
@@ -218,7 +222,8 @@ public abstract class MediaCodecEncoder extends BaseEncoder implements Runnable 
     /**
      * Release all releated objects
      */
-    protected void release() {
+	@Override
+    public void release() {
 		if (DEBUG) Log.d(TAG, "release:");
 		try {
 			mListener.onEncoderStopped(this);
@@ -303,7 +308,8 @@ public abstract class MediaCodecEncoder extends BaseEncoder implements Runnable 
     /**
      * drain encoded data and write them to muxer
      */
-    protected void drain() {
+	@Override
+    public void drain() {
     	if (mMediaCodec == null) return;
         ByteBuffer[] encoderOutputBuffers = mMediaCodec.getOutputBuffers();
         int encoderStatus, count = 0;
@@ -373,7 +379,7 @@ LOOP:	while (mIsCapturing) {
                 	// This sample is for API>=18(>=Android 4.3), just ignore this flag here
 					if (DEBUG) Log.d(TAG, "drain:BUFFER_FLAG_CODEC_CONFIG");
 					//remove this,may cause trouble in local record
-					mBufferInfo.size = 0;
+					//mBufferInfo.size = 0;
                 }
 				if (mBufferInfo.size != 0) {
                 	// encoded data is ready, clear waiting counter

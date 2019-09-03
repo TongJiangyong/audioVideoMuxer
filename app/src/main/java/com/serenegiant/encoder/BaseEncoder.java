@@ -4,6 +4,9 @@ import com.serenegiant.muxer.EncodedFrame;
 import com.serenegiant.connector.SinkConnector;
 import com.serenegiant.connector.SrcConnector;
 
+import java.io.IOException;
+import java.nio.ByteBuffer;
+
 /**
  * Created by yong on 2019/8/30.
  */
@@ -21,5 +24,24 @@ public abstract class BaseEncoder implements SinkConnector<VideoCaptureFrame> {
 
     @Override
     public abstract int onDataAvailable(VideoCaptureFrame data);
+
+    //prepare encoder configuration
+    public abstract void prepare() throws IOException;
+
+    //release encoder
+    public abstract void release();
+
+    //start encoder
+    public abstract void startRecording();
+
+    //stop encoder
+    public abstract void stopRecording();
+
+    //get an output buffer from encoder
+    public abstract void drain();
+
+    //notify encoder an new input buffer will come
+    public abstract boolean frameAvailableSoon();
+
 
 }

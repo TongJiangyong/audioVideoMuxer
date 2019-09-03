@@ -90,7 +90,7 @@ public class MediaCodecAudioEncoder extends MediaCodecEncoder {
 	}
 
 	@Override
-    protected void release() {
+    public void release() {
 		super.release();
     }
 
