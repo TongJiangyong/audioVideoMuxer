@@ -1,4 +1,4 @@
-package com.serenegiant.encoder;
+package com.serenegiant.model;
 
 import android.graphics.SurfaceTexture;
 import android.opengl.Matrix;
@@ -21,12 +21,13 @@ public class VideoCaptureFrame {
     public ByteBuffer mBuffer;  //audio
     public int mLength;          //audio
 
-    public VideoCaptureFrame(ByteBuffer buffer,int length,long timeStamp){
+    public VideoCaptureFrame(ByteBuffer buffer, int length, long timeStamp) {
         this.mBuffer = buffer;
         this.mLength = length;
         this.mTimeStamp = timeStamp;
     }
-    public VideoCaptureFrame(SurfaceTexture texture,int textureId,float[] mvpMatrix,int count){
+
+    public VideoCaptureFrame(SurfaceTexture texture, int textureId, float[] mvpMatrix, int count) {
         mCount = count;
         mSurfaceTexture = texture;
         mMvpMatrix = mvpMatrix;

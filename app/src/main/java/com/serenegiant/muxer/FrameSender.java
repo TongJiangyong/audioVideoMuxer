@@ -25,6 +25,8 @@ import android.os.HandlerThread;
 import android.os.Message;
 import android.util.Log;
 
+import com.serenegiant.model.BufferInfoEx;
+
 import java.util.LinkedList;
 import java.util.List;
 
@@ -83,10 +85,9 @@ public class FrameSender {
     private void sendFrame(int keepCount) {
         while (frameQueue.size() > keepCount) {
             FramePool.Frame sendFrame = frameQueue.remove(0);
-            Log.i("TJY","sendFrame.type "+sendFrame.type);
             if (sendFrame.type == FramePool.Frame.TYPE_VIDEO) {
                 frameSenderCallback.onSendVideo(sendFrame);
-            } else if(sendFrame.type == FramePool.Frame.TYPE_AUDIO) {
+            } else if (sendFrame.type == FramePool.Frame.TYPE_AUDIO) {
                 frameSenderCallback.onSendAudio(sendFrame);
             }
             framePool.release(sendFrame);
@@ -101,7 +102,6 @@ public class FrameSender {
 
     public void sendAddFrameMessage(byte[] data, int offset, int length, BufferInfoEx bufferInfo, int type) {
         FramePool.Frame frame = framePool.obtain(data, offset, length, bufferInfo, type);
-        Log.i("TJY","sendAddFrameMessage into "+type);
         Message message = Message.obtain();
         message.what = MSG_ADD_FRAME;
         message.obj = frame;
@@ -118,8 +118,11 @@ public class FrameSender {
 
     public interface FrameSenderCallback {
         void onStart();
+
         void onSendVideo(FramePool.Frame sendFrame);
+
         void onSendAudio(FramePool.Frame sendFrame);
+
         void close();
 
     }

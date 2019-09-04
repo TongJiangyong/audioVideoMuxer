@@ -16,9 +16,9 @@ public class ConstantMediaConfig {
     public final static int VIDEO_FRAME_RATE = 25;
     public final static float VIDEO_BPP = 0.25f;
     public final static float VIDEO_KEY_COLOR_FORMAT = MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface;
-    public final static float VIDEO_KEY_IFRAME = 10;
-    public final static float VIDEO_ENCODE_WIDTH = 1280;
-    public final static float VIDEO_ENCODE_HEIGHT = 720;
+    public final static int VIDEO_KEY_IFRAME = 1;
+    public final static int VIDEO_ENCODE_WIDTH = 1280;
+    public final static int VIDEO_ENCODE_HEIGHT = 720;
 
     //video capture
     public final static int VIDEO_CAPTURE_TYPE = 0; //0 texture ;1 byte array
@@ -41,6 +41,10 @@ public class ConstantMediaConfig {
     public final static int AUDIO_FRAME_BUFFER = 25;    // AAC, frame/buffer/sec
 
     //audio capture info
-    public final static int AUDIO_CHANNEL_COUNT = AudioFormat.CHANNEL_IN_MONO;    // 声道数 CHANNEL_IN_MONO 1;  CHANNEL_IN_STEREO 2
+    public final static int AUDIO_CHANNEL_FORMAT = AudioFormat.CHANNEL_IN_MONO;    // 声道数 CHANNEL_IN_MONO 1;  CHANNEL_IN_STEREO 2
     public final static int AUDIO_PCM_BIT = AudioFormat.ENCODING_PCM_16BIT;
+
+    //encoder config
+    public static final int TIMEOUT_USEC = 10000;    // 10[msec]
+
 }

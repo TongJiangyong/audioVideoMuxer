@@ -1,4 +1,4 @@
-package com.serenegiant.encoder;
+package com.serenegiant.model;
 
 import android.media.AudioFormat;
 import android.media.AudioRecord;
@@ -9,25 +9,48 @@ import android.util.Log;
 
 import com.serenegiant.audiovideosample.ConstantMediaConfig;
 
+import java.security.PrivateKey;
+
+import static android.media.AudioFormat.CHANNEL_IN_MONO;
+import static android.media.AudioFormat.CHANNEL_IN_STEREO;
+
 /**
  * Created by yong on 2019/8/31.
  */
 
 public class AudioMediaData {
-
-    public String audioMimeType = ConstantMediaConfig.AUDIO_MIME_TYPE;
-    public int audioAacProfile = ConstantMediaConfig.AUDIO_AAC_PROFILE;
-    public int audioKeyChannelMask = ConstantMediaConfig.AUDIO_KEY_CHANNEL_MASK;
-    public int audioKeyChannelCount = ConstantMediaConfig.AUDIO_KEY_CHANNEL_COUNT;
+    private String audioMimeType;
+    private int audioAacProfile;
+    private int audioKeyChannelMask;
+    private int audioKeyChannelCount;
     //encoderInfo
-    public int audioSampleRate = ConstantMediaConfig.AUDIO_SAMPLE_RATE;	// 44.1[KHz] is only setting guaranteed to be available on all devices.
-    public int audioBitRate = ConstantMediaConfig.AUDIO_BIT_RATE;
-    public int audioPerFrame = ConstantMediaConfig.AUDIO_PER_FRAME;	// AAC, bytes/frame/channel
-    public int audioFrameBuffer = ConstantMediaConfig.AUDIO_FRAME_BUFFER; 	// AAC, frame/buffer/sec
+    private int audioSampleRate;    // 44.1[KHz] is only setting guaranteed to be available on all devices.
+    private int audioBitRate;
+    private int audioPerFrame;    // AAC, bytes/frame/channel
+    private int audioFrameBuffer;    // AAC, frame/buffer/sec
 
     //capture info
-    public int audioChannelCount = ConstantMediaConfig.AUDIO_CHANNEL_COUNT; 	// 声道数 CHANNEL_IN_MONO 1;  CHANNEL_IN_STEREO 2
-    public int audioPcmBit = ConstantMediaConfig.AUDIO_PCM_BIT;
+    private int audioChannelCount;    // 声道数 CHANNEL_IN_MONO 1;  CHANNEL_IN_STEREO 2
+
+
+
+    private int audioChannelFormat;    // 声道数 CHANNEL_IN_MONO 1;  CHANNEL_IN_STEREO 2
+    private int audioPcmBit;
+
+    public AudioMediaData() {
+        audioMimeType = ConstantMediaConfig.AUDIO_MIME_TYPE;
+        audioAacProfile = ConstantMediaConfig.AUDIO_AAC_PROFILE;
+        audioKeyChannelMask = ConstantMediaConfig.AUDIO_KEY_CHANNEL_MASK;
+        audioKeyChannelCount = ConstantMediaConfig.AUDIO_KEY_CHANNEL_COUNT;
+        audioSampleRate = ConstantMediaConfig.AUDIO_SAMPLE_RATE;
+        audioBitRate = ConstantMediaConfig.AUDIO_BIT_RATE;
+        audioPerFrame = ConstantMediaConfig.AUDIO_PER_FRAME;
+        audioFrameBuffer = ConstantMediaConfig.AUDIO_FRAME_BUFFER;
+        audioChannelFormat = ConstantMediaConfig.AUDIO_CHANNEL_FORMAT;
+        audioChannelCount = countAudioChannelCount();
+        audioPcmBit = ConstantMediaConfig.AUDIO_PCM_BIT;
+
+    }
 
 
     public String getAudioMimeType() {
@@ -109,4 +132,19 @@ public class AudioMediaData {
     public void setAudioPcmBit(int audioPcmBit) {
         this.audioPcmBit = audioPcmBit;
     }
+
+    public int getAudioChannelFormat() {
+        return audioChannelFormat;
+    }
+    private int countAudioChannelCount() {
+        switch (audioChannelFormat){
+            case  CHANNEL_IN_MONO :
+                return 1;
+            case CHANNEL_IN_STEREO:
+                return 2;
+            default:
+                return 1;
+        }
+    }
+
 }

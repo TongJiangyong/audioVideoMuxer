@@ -23,124 +23,124 @@ package com.serenegiant.encoder;
 */
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 
 import android.media.AudioFormat;
-import android.media.AudioRecord;
 import android.media.MediaCodec;
 import android.media.MediaCodecInfo;
 import android.media.MediaCodecList;
 import android.media.MediaFormat;
-import android.media.MediaRecorder;
-import android.util.Log;
+
+
+import com.serenegiant.model.AudioMediaData;
+import com.serenegiant.model.MediaEncoderFormat;
+import com.serenegiant.model.VideoCaptureFrame;
+import com.serenegiant.utils.LogUtil;
 
 public class MediaCodecAudioEncoder extends MediaCodecEncoder {
-	private static final boolean DEBUG = false;	// TODO set false on release
-	private static final String TAG = "MediaCodecAudioEncoder";
+    private static final boolean DEBUG = false;    // TODO set false on release
+    private static final String TAG = "MediaCodecAudioEncoder";
 
-	private static final String MIME_TYPE = "audio/mp4a-latm";
-	private static final int BIT_RATE = 64000;
-	private static final int SAMPLE_RATE = 44100;
-
-	public MediaCodecAudioEncoder(final IEncoderListener listener) {
-		super(listener);
-	}
-
-	@Override
-	public void prepare() throws IOException {
-		if (DEBUG) Log.v(TAG, "prepareEncoders:");
-        mTrackIndex = -1;
-		codecType = 0;
-        mOutputBufferEnabled = mIsEOS = false;
-        // prepareEncoders MediaCodec for AAC encoding of audio data from inernal mic.
-        final MediaCodecInfo audioCodecInfo = selectAudioCodec(MIME_TYPE);
-        if (audioCodecInfo == null) {
-            Log.e(TAG, "Unable to find an appropriate codec for " + MIME_TYPE);
-            return;
-        }
-		if (DEBUG) Log.i(TAG, "selected codec: " + audioCodecInfo.getName());
-
-        final MediaFormat audioFormat = MediaFormat.createAudioFormat(MIME_TYPE, SAMPLE_RATE, 1);
-		audioFormat.setInteger(MediaFormat.KEY_AAC_PROFILE, MediaCodecInfo.CodecProfileLevel.AACObjectLC);
-		audioFormat.setInteger(MediaFormat.KEY_CHANNEL_MASK, AudioFormat.CHANNEL_IN_MONO);
-		audioFormat.setInteger(MediaFormat.KEY_BIT_RATE, BIT_RATE);
-		audioFormat.setInteger(MediaFormat.KEY_CHANNEL_COUNT, 1);
-		audioFormat.setInteger(MediaFormat.KEY_BITRATE_MODE,
-				MediaCodecInfo.EncoderCapabilities.BITRATE_MODE_VBR);
-//		audioFormat.setLong(MediaFormat.KEY_MAX_INPUT_SIZE, inputFile.length());
-//      audioFormat.setLong(MediaFormat.KEY_DURATION, (long)durationInMs );
-		if (DEBUG) Log.i(TAG, "format: " + audioFormat);
-        mMediaCodec = MediaCodec.createEncoderByType(MIME_TYPE);
-        mMediaCodec.configure(audioFormat, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
-        mMediaCodec.start();
-        if (DEBUG) Log.i(TAG, "prepareEncoders finishing");
-        if (mListener != null) {
-        	try {
-        		mListener.onEncoderPrepared(this);
-        	} catch (final Exception e) {
-        		Log.e(TAG, "prepareEncoders:", e);
-        	}
-        }
-	}
-
-    @Override
-	public void startRecording() {
-		super.startRecording();
-		// create and execute audio capturing thread using internal mic
-	}
-
-	@Override
-    public void release() {
-		super.release();
+    private AudioMediaData mAudioMediaData;
+    public MediaCodecAudioEncoder(final IEncoderListener listener,AudioMediaData audioMediaData) {
+        super(listener,"MediaCodecAudioEncoder");
+        mAudioMediaData = audioMediaData;
     }
 
+    @Override
+    public void prepare() throws IOException {
+        LogUtil.v("prepareEncoders:");
+        mTrackIndex = -1;
+        codecType = MediaEncoderFormat.CodecType.AUDIO;
+        mOutputBufferEnabled = mIsEOS = false;
+        // prepareEncoders MediaCodec for AAC encoding of audio data from inernal mic.
+        final MediaCodecInfo audioCodecInfo = selectAudioCodec(mAudioMediaData.getAudioMimeType());
+        if (audioCodecInfo == null) {
+            LogUtil.e("Unable to find an appropriate codec for " + mAudioMediaData.getAudioMimeType());
+            return;
+        }
+        LogUtil.i("selected codec: " + audioCodecInfo.getName());
 
+        final MediaFormat audioFormat = MediaFormat.createAudioFormat(
+                mAudioMediaData.getAudioMimeType(),
+                mAudioMediaData.getAudioSampleRate(),
+                mAudioMediaData.getAudioChannelCount());
+        audioFormat.setInteger(MediaFormat.KEY_AAC_PROFILE, mAudioMediaData.getAudioAacProfile());
+        audioFormat.setInteger(MediaFormat.KEY_CHANNEL_MASK, mAudioMediaData.getAudioChannelFormat());
+        audioFormat.setInteger(MediaFormat.KEY_BIT_RATE, mAudioMediaData.getAudioBitRate());
+        audioFormat.setInteger(MediaFormat.KEY_BITRATE_MODE,
+                    MediaCodecInfo.EncoderCapabilities.BITRATE_MODE_VBR);
+//		audioFormat.setLong(MediaFormat.KEY_MAX_INPUT_SIZE, inputFile.length());
+//      audioFormat.setLong(MediaFormat.KEY_DURATION, (long)durationInMs );
+        LogUtil.i("format: " + audioFormat);
+        mMediaCodec = MediaCodec.createEncoderByType(mAudioMediaData.getAudioMimeType());
+        mMediaCodec.configure(audioFormat, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
+        mMediaCodec.start();
+        LogUtil.i("prepareEncoders finishing");
+        if (mListener != null) {
+            try {
+                mListener.onEncoderPrepared(this);
+            } catch (final Exception e) {
+                LogUtil.e("prepareEncoders:" + e);
+            }
+        }
+    }
 
+    @Override
+    public void startRecording() {
+        super.startRecording();
+        // create and execute audio capturing thread using internal mic
+    }
 
+    @Override
+    public void release() {
+        super.release();
+    }
 
 
     /**
      * select the first codec that match a specific MIME type
+     *
      * @param mimeType
      * @return
      */
     private static final MediaCodecInfo selectAudioCodec(final String mimeType) {
-    	if (DEBUG) Log.v(TAG, "selectAudioCodec:");
+        LogUtil.v("selectAudioCodec:");
 
-    	MediaCodecInfo result = null;
-    	// get the list of available codecs
+        MediaCodecInfo result = null;
+        // get the list of available codecs
         final int numCodecs = MediaCodecList.getCodecCount();
-LOOP:	for (int i = 0; i < numCodecs; i++) {
-        	final MediaCodecInfo codecInfo = MediaCodecList.getCodecInfoAt(i);
-            if (!codecInfo.isEncoder()) {	// skipp decoder
+        LOOP:
+        for (int i = 0; i < numCodecs; i++) {
+            final MediaCodecInfo codecInfo = MediaCodecList.getCodecInfoAt(i);
+            if (!codecInfo.isEncoder()) {    // skipp decoder
                 continue;
             }
             final String[] types = codecInfo.getSupportedTypes();
             for (int j = 0; j < types.length; j++) {
-            	if (DEBUG) Log.i(TAG, "supportedType:" + codecInfo.getName() + ",MIME=" + types[j]);
+                LogUtil.i("supportedType:" + codecInfo.getName() + ",MIME=" + types[j]);
                 if (types[j].equalsIgnoreCase(mimeType)) {
-                	if (result == null) {
-                		result = codecInfo;
-               			break LOOP;
-                	}
+                    if (result == null) {
+                        result = codecInfo;
+                        break LOOP;
+                    }
                 }
             }
         }
-   		return result;
+        return result;
     }
 
 
-	@Override
-	public int onDataAvailable(VideoCaptureFrame data) {
-		if(mRequestStop){
-			return 0;
-		}
-		if(data!=null){
-			if (DEBUG) Log.d(TAG, "onDataAvailable encode");
-			encode(data.mBuffer,data.mLength,data.mTimeStamp);
-		}
-		super.frameAvailableSoon();
-		return 0;
-	}
+    @Override
+    public int onDataAvailable(VideoCaptureFrame data) {
+        if (mRequestStop) {
+            return 0;
+        }
+        if (data != null) {
+            LogUtil.d("onDataAvailable encode");
+            encode(data.mBuffer, data.mLength, data.mTimeStamp);
+        }
+        super.frameAvailableSoon();
+        return 0;
+    }
 
 }

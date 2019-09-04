@@ -26,7 +26,6 @@ import java.io.IOException;
 
 import android.app.Fragment;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.View.OnClickListener;
@@ -35,10 +34,9 @@ import android.widget.ImageButton;
 import android.widget.TextView;
 
 import com.serenegiant.audio_capture.AudioCaptureThread;
-import com.serenegiant.encoder.AudioMediaData;
+import com.serenegiant.model.AudioMediaData;
 import com.serenegiant.encoder.VideoEncoderDataPrepare;
-import com.serenegiant.encoder.VideoMediaData;
-import com.serenegiant.muxer.AndroidMediaMuxer;
+import com.serenegiant.model.VideoMediaData;
 import com.serenegiant.muxer.BaseMuxer;
 import com.serenegiant.muxer.RtmpMuxer;
 import com.serenegiant.muxer.StreamPublishParam;
@@ -46,10 +44,10 @@ import com.serenegiant.encoder.BaseEncoder;
 import com.serenegiant.encoder.IEncoderListener;
 import com.serenegiant.encoder.MediaCodecAudioEncoder;
 import com.serenegiant.encoder.MediaCodecVideoEncoder;
-import com.serenegiant.encoder.MediaEncoderFormat;
+import com.serenegiant.model.MediaEncoderFormat;
+import com.serenegiant.utils.LogUtil;
 
 public class CameraFragment extends Fragment {
-	private static final boolean DEBUG = true;	// TODO set false on release
 	private static final String TAG = "CameraFragment";
 
 	/**
@@ -94,13 +92,13 @@ public class CameraFragment extends Fragment {
 	@Override
 	public void onResume() {
 		super.onResume();
-		if (DEBUG) Log.v(TAG, "onResume:");
+		LogUtil.v("onResume:");
 		mCameraView.onResume();
 	}
 
 	@Override
 	public void onPause() {
-		if (DEBUG) Log.v(TAG, "onPause:");
+		LogUtil.v("onPause:");
 		stopRecording();
 		mCameraView.onPause();
 		super.onPause();
@@ -144,26 +142,29 @@ public class CameraFragment extends Fragment {
 	 * of encoder is heavy work
 	 */
 	private void startRecording() {
-		if (DEBUG) Log.v(TAG, "startEncoders:");
+		LogUtil.v("startEncoders:");
 		try {
 			videoMediaData = new VideoMediaData();
+			videoMediaData.setVideoEncodeWidth(mCameraView.getVideoWidth());
+			videoMediaData.setVideoEncodeHeight(mCameraView.getVideoHeight());
+			videoMediaData.setVideoEncodeFps(mCameraView.getVideoFps());
 			audioMediaData = new AudioMediaData();
 			mRecordButton.setColorFilter(0xffff0000);	// turn red
 			//mMuxer = new AndroidMediaMuxer("/sdcard/testAudioVideo.mp4");	// if you record audio only, ".m4a" is also OK.
 			StreamPublishParam streamPublishParam = new StreamPublishParam();
 			streamPublishParam.setRtmpUrl("rtmp://10.63.0.16:1935/live/room");
 			streamPublishParam.setOutputFilePath("/sdcard/testAudioVideo.flv");
-			streamPublishParam.setNeedLocalWrite(true);
-			streamPublishParam.setVideoHeight(1280);
-			streamPublishParam.setVideoWidth(720);
-			mMuxer = new RtmpMuxer(streamPublishParam);
+			streamPublishParam.setNeedLocalWrite(false);
+			streamPublishParam.setVideoHeight(videoMediaData.getVideoEncodeHeight());
+			streamPublishParam.setVideoWidth(videoMediaData.getVideoEncodeWidth());
+			mMuxer = new RtmpMuxer(streamPublishParam,videoMediaData,audioMediaData);
 			if (true) {
 				// for video capturing
-				videoEncoder = new MediaCodecVideoEncoder(mMediaEncoderListener, mCameraView.getVideoWidth(), mCameraView.getVideoHeight());
+				videoEncoder = new MediaCodecVideoEncoder(mMediaEncoderListener, videoMediaData);
 			}
 			if (true) {
 				// for audio capturing
-				audioEncoder = new MediaCodecAudioEncoder(mMediaEncoderListener);
+				audioEncoder = new MediaCodecAudioEncoder(mMediaEncoderListener,audioMediaData);
 			}
 			mMuxer.addEncoder(videoEncoder);
 			mMuxer.addEncoder(audioEncoder);
@@ -173,7 +174,7 @@ public class CameraFragment extends Fragment {
 			mMuxer.startEncoders();
 		} catch (final IOException e) {
 			mRecordButton.setColorFilter(0);
-			Log.e(TAG, "startCapture:", e);
+			LogUtil.e("startCapture:"+e);
 		}
 	}
 
@@ -181,7 +182,7 @@ public class CameraFragment extends Fragment {
 	 * request stop recording
 	 */
 	private void stopRecording() {
-		if (DEBUG) Log.v(TAG, "stopEncoders:mMuxer=" + mMuxer);
+		LogUtil.v("stopEncoders:mMuxer=" + mMuxer);
 		mRecordButton.setColorFilter(0);	// return to default color
 
 		if (mMuxer != null) {
@@ -206,14 +207,14 @@ public class CameraFragment extends Fragment {
 
 		@Override
 		public void onEncoderStopped(BaseEncoder mediaEncoder) {
-			if (DEBUG) Log.v(TAG, "onStopped:encoder=" + mediaEncoder);
+			LogUtil.v("onStopped:encoder=" + mediaEncoder);
 			if (mediaEncoder instanceof MediaCodecVideoEncoder)
 				mCameraView.setVideoCodecContext(null);
 		}
 
 		@Override
 		public void onEncoderPrepared(BaseEncoder mediaEncoder) {
-			if (DEBUG) Log.v(TAG, "onPrepared:encoder=" + mediaEncoder);
+			LogUtil.v("onPrepared:encoder=" + mediaEncoder);
 			//very important to put data when encoder all complete
 			if (mediaEncoder instanceof MediaCodecVideoEncoder)
 			{
@@ -222,7 +223,7 @@ public class CameraFragment extends Fragment {
 				videoEncoderDataPrepare.getRawDataConnector().connect(mediaEncoder);
 				mCameraView.setVideoCodecContext(videoEncoderDataPrepare);
 			}else if(mediaEncoder instanceof MediaCodecAudioEncoder){
-				audioCaptureThread = new AudioCaptureThread();
+				audioCaptureThread = new AudioCaptureThread(audioMediaData);
 				audioCaptureThread.getCaptureDataConnector().connect(mediaEncoder);
 				audioCaptureThread.startAudioCapture();
 			}
@@ -232,7 +233,7 @@ public class CameraFragment extends Fragment {
 		@Override
 		public void onEncoderReleased() throws Exception {
 			try {
-				if (DEBUG) Log.v(TAG, "onEncoderReleased");
+				LogUtil.v("onEncoderReleased");
 				mMuxer.stopMuxer();
 			} catch (Exception e) {
 				throw e;
@@ -247,7 +248,7 @@ public class CameraFragment extends Fragment {
 			int trackIndex = mMuxer.addTrackToMuxer(mediaEncoderFormat);
 			if (!mMuxer.startMuxer()) {
                		// we should wait until muxer is ready
-					if (DEBUG) Log.v(TAG, "onEncoderOutPutBufferReady");
+					LogUtil.v("onEncoderOutPutBufferReady");
                		synchronized (mMuxer) {
 	               		while (!mMuxer.isMuxerStarted())
 						try {

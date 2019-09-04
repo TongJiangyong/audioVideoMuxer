@@ -27,162 +27,170 @@ import java.text.SimpleDateFormat;
 import java.util.Locale;
 
 import android.media.MediaMuxer;
-import android.util.Log;
+
 
 import com.serenegiant.encoder.BaseEncoder;
 import com.serenegiant.encoder.MediaCodecAudioEncoder;
 import com.serenegiant.encoder.MediaCodecEncoder;
 import com.serenegiant.encoder.MediaCodecVideoEncoder;
-import com.serenegiant.encoder.MediaEncoderFormat;
+import com.serenegiant.model.AudioMediaData;
+import com.serenegiant.model.MediaEncoderFormat;
+import com.serenegiant.model.EncodedFrame;
+import com.serenegiant.model.VideoMediaData;
+import com.serenegiant.utils.LogUtil;
 
-public class AndroidMediaMuxer extends BaseMuxer{
-	private static final boolean DEBUG = false;	// TODO set false on release
-	private static final String TAG = "AndroidMediaMuxer";
+public class AndroidMediaMuxer extends BaseMuxer {
+    private static final boolean DEBUG = false;    // TODO set false on release
+    private static final String TAG = "AndroidMediaMuxer";
 
-	private static final String DIR_NAME = "AVRecSample";
+    private static final String DIR_NAME = "AVRecSample";
     private static final SimpleDateFormat mDateTimeFormat = new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss", Locale.US);
 
-	private String mOutputPath;
-	private final MediaMuxer mMediaMuxer;	// API >= 18
-	private int mEncoderCount, mStatredCount;
-	private boolean mIsStarted;
-	private MediaCodecEncoder mVideoEncoder, mAudioEncoder;
+    private String mOutputPath;
+    private final MediaMuxer mMediaMuxer;    // API >= 18
+    private int mEncoderCount, mStatredCount;
+    private boolean mIsStarted;
+    private MediaCodecEncoder mVideoEncoder, mAudioEncoder;
 
-	/**
-	 * Constructor
-	 * @param path extension of output file
-	 * @throws IOException
-	 */
-	public AndroidMediaMuxer(String path) throws IOException {
-		super();
-		try {
-			mOutputPath = path;
-		} catch (final NullPointerException e) {
-			throw new RuntimeException("This app has no permission of writing external storage");
-		}
-		mMediaMuxer = new MediaMuxer(mOutputPath, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4);
-		mEncoderCount = mStatredCount = 0;
-		mIsStarted = false;
-	}
+    /**
+     * Constructor
+     *
+     * @param path extension of output file
+     * @throws IOException
+     */
+    public AndroidMediaMuxer(String path, VideoMediaData videoMediaData, AudioMediaData audioMediaData) throws IOException {
+        super(videoMediaData,audioMediaData);
+        try {
+            mOutputPath = path;
+        } catch (final NullPointerException e) {
+            throw new RuntimeException("This app has no permission of writing external storage");
+        }
+        mMediaMuxer = new MediaMuxer(mOutputPath, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4);
+        mEncoderCount = mStatredCount = 0;
+        mIsStarted = false;
+    }
 
-	@Override
-	public void prepareEncoders() throws IOException {
-		if (mVideoEncoder != null)
-			mVideoEncoder.prepare();
-		if (mAudioEncoder != null)
-			mAudioEncoder.prepare();
-	}
-
-
-	@Override
-	public void startEncoders() {
-		if (mVideoEncoder != null)
-			mVideoEncoder.startRecording();
-		if (mAudioEncoder != null)
-			mAudioEncoder.startRecording();
-	}
+    @Override
+    public void prepareEncoders() throws IOException {
+        if (mVideoEncoder != null)
+            mVideoEncoder.prepare();
+        if (mAudioEncoder != null)
+            mAudioEncoder.prepare();
+    }
 
 
-	@Override
-	public void stopEncoders() {
-		if (mVideoEncoder != null)
-			mVideoEncoder.stopRecording();
-		mVideoEncoder = null;
-		if (mAudioEncoder != null)
-			mAudioEncoder.stopRecording();
-		mAudioEncoder = null;
-	}
+    @Override
+    public void startEncoders() {
+        if (mVideoEncoder != null)
+            mVideoEncoder.startRecording();
+        if (mAudioEncoder != null)
+            mAudioEncoder.startRecording();
+    }
 
-	@Override
-	public synchronized boolean isMuxerStarted() {
-		return mIsStarted;
-	}
+
+    @Override
+    public void stopEncoders() {
+        if (mVideoEncoder != null)
+            mVideoEncoder.stopRecording();
+        mVideoEncoder = null;
+        if (mAudioEncoder != null)
+            mAudioEncoder.stopRecording();
+        mAudioEncoder = null;
+    }
+
+    @Override
+    public synchronized boolean isMuxerStarted() {
+        return mIsStarted;
+    }
 
 //**********************************************************************
 //**********************************************************************
-	/**
-	 * assign encoder to this calss. this is called from encoder.
-	 * @param encoder instance of MediaCodecVideoEncoder or MediaCodecAudioEncoder
-	 */
-	@Override
-	/*package*/ public void addEncoder(final BaseEncoder encoder) {
-		if (encoder instanceof MediaCodecVideoEncoder) {
-			if (mVideoEncoder != null)
-				throw new IllegalArgumentException("Video encoder already added.");
-			mVideoEncoder = (MediaCodecEncoder)encoder;
-		} else if (encoder instanceof MediaCodecAudioEncoder) {
-			if (mAudioEncoder != null)
-				throw new IllegalArgumentException("Video encoder already added.");
-			mAudioEncoder = (MediaCodecEncoder)encoder;
-		} else
-			throw new IllegalArgumentException("unsupported encoder");
-		mEncoderCount = (mVideoEncoder != null ? 1 : 0) + (mAudioEncoder != null ? 1 : 0);
-	}
 
-	/**
-	 * request start recording from encoder
-	 * @return true when muxer is ready to write
-	 */
-	@Override
-	/*package*/ public synchronized boolean startMuxer() {
-		if (DEBUG) Log.v(TAG,  "start:");
-		mStatredCount++;
-		if ((mEncoderCount > 0) && (mStatredCount == mEncoderCount)) {
-			mMediaMuxer.start();
-			mIsStarted = true;
-			notifyAll();
-			if (DEBUG) Log.v(TAG,  "MediaMuxer started");
-		}
-		return mIsStarted;
-	}
+    /**
+     * assign encoder to this calss. this is called from encoder.
+     *
+     * @param encoder instance of MediaCodecVideoEncoder or MediaCodecAudioEncoder
+     */
+    @Override
+    public void addEncoder(final BaseEncoder encoder) {
+        if (encoder instanceof MediaCodecVideoEncoder) {
+            if (mVideoEncoder != null)
+                throw new IllegalArgumentException("Video encoder already added.");
+            mVideoEncoder = (MediaCodecEncoder) encoder;
+        } else if (encoder instanceof MediaCodecAudioEncoder) {
+            if (mAudioEncoder != null)
+                throw new IllegalArgumentException("Video encoder already added.");
+            mAudioEncoder = (MediaCodecEncoder) encoder;
+        } else
+            throw new IllegalArgumentException("unsupported encoder");
+        mEncoderCount = (mVideoEncoder != null ? 1 : 0) + (mAudioEncoder != null ? 1 : 0);
+    }
 
-	/**
-	 * request stop recording from encoder when encoder received EOS
-	*/
-	@Override
-	/*package*/ public synchronized void stopMuxer() {
-		if (DEBUG) Log.v(TAG,  "stop:mStatredCount=" + mStatredCount);
-		mStatredCount--;
-		if ((mEncoderCount > 0) && (mStatredCount <= 0)) {
-			mMediaMuxer.stop();
-			mMediaMuxer.release();
-			mIsStarted = false;
-			if (DEBUG) Log.v(TAG,  "MediaMuxer stopped");
-		}
-	}
+    /**
+     * request start recording from encoder
+     *
+     * @return true when muxer is ready to write
+     */
+    @Override
+	public synchronized boolean startMuxer() {
+        LogUtil.v("start:");
+        mStatredCount++;
+        if ((mEncoderCount > 0) && (mStatredCount == mEncoderCount)) {
+            mMediaMuxer.start();
+            mIsStarted = true;
+            notifyAll();
+            LogUtil.v("MediaMuxer started");
+        }
+        return mIsStarted;
+    }
 
-	/**
-	 * assign encoder to muxer
-	 * @param format
-	 * @return minus value indicate error
-	 */
-	@Override
-	/*package*/ public synchronized int addTrackToMuxer( MediaEncoderFormat format) {
-		if (mIsStarted)
-			throw new IllegalStateException("muxer already started");
-		final int trackIx = mMediaMuxer.addTrack(format.getMediaFormat());
-		if (DEBUG) Log.i(TAG, "addTrack:" + mEncoderCount + ",trackIx=" + trackIx + ",format=" + format.getMediaFormat());
-		return trackIx;
-	}
+    /**
+     * request stop recording from encoder when encoder received EOS
+     */
+    @Override
+	public synchronized void stopMuxer() {
+        LogUtil.v("stop:mStatredCount=" + mStatredCount);
+        mStatredCount--;
+        if ((mEncoderCount > 0) && (mStatredCount <= 0)) {
+            mMediaMuxer.stop();
+            mMediaMuxer.release();
+            mIsStarted = false;
+            LogUtil.v("MediaMuxer stopped");
+        }
+    }
 
-	/**
-	 *
-	 * @param encodedFrame
-	 */
-	@Override
-	/*package*/ protected synchronized void writeEncodedData(EncodedFrame encodedFrame) {
-		if (mStatredCount > 0){
-			if (DEBUG) Log.i(TAG, "addTrack:" + encodedFrame.getmTrackIndex() + ",BufferInfo=" + encodedFrame.getmBufferInfo());
-			mMediaMuxer.writeSampleData(encodedFrame.getmTrackIndex(), encodedFrame.getEncodedByteBuffer(), encodedFrame.getmBufferInfo());
-		}
+    /**
+     * assign encoder to muxer
+     *
+     * @param format
+     * @return minus value indicate error
+     */
+    @Override
+	public synchronized int addTrackToMuxer(MediaEncoderFormat format) {
+        if (mIsStarted)
+            throw new IllegalStateException("muxer already started");
+        final int trackIx = mMediaMuxer.addTrack(format.getMediaFormat());
+        LogUtil.i("addTrack:" + mEncoderCount + ",trackIx=" + trackIx + ",format=" + format.getMediaFormat());
+        return trackIx;
+    }
+
+    /**
+     * @param encodedFrame
+     */
+    @Override
+	protected synchronized void writeEncodedData(EncodedFrame encodedFrame) {
+        if (mStatredCount > 0) {
+            LogUtil.i("addTrack:" + encodedFrame.getmTrackIndex() + ",BufferInfo=" + encodedFrame.getmBufferInfo());
+            mMediaMuxer.writeSampleData(encodedFrame.getmTrackIndex(), encodedFrame.getEncodedByteBuffer(), encodedFrame.getmBufferInfo());
+        }
 
 
-	}
+    }
 
-	@Override
-	public int onDataAvailable(EncodedFrame data){
-		this.writeEncodedData(data);
-		return 0;
-	}
+    @Override
+    public int onDataAvailable(EncodedFrame data) {
+        this.writeEncodedData(data);
+        return 0;
+    }
 
 }

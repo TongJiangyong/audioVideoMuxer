@@ -1,4 +1,4 @@
-package com.serenegiant.encoder;
+package com.serenegiant.model;
 
 import android.media.MediaFormat;
 
@@ -7,6 +7,9 @@ import android.media.MediaFormat;
  */
 
 public class MediaEncoderFormat {
+    public enum CodecType{
+        AUDIO,VIDEO
+    }
     private MediaFormat mediaFormat;
 
     public MediaEncoderFormat(MediaFormat mediaFormat) {

@@ -5,7 +5,9 @@ import android.media.AudioRecord;
 import android.media.MediaRecorder;
 import android.util.Log;
 
-import com.serenegiant.encoder.VideoCaptureFrame;
+import com.serenegiant.model.AudioMediaData;
+import com.serenegiant.model.VideoCaptureFrame;
+import com.serenegiant.utils.LogUtil;
 
 import java.nio.ByteBuffer;
 
@@ -14,29 +16,29 @@ import java.nio.ByteBuffer;
  */
 
 //audio collect thread
-public class AudioCaptureThread extends BaseAudioCapture{
-    private final String TAG= "AudioCaptureThread";
-    private static final int SAMPLE_RATE = 44100;	// 44.1[KHz] is only setting guaranteed to be available on all devices.
-    public static final int SAMPLES_PER_FRAME = 1024;	// AAC, bytes/frame/channel
-    public static final int FRAMES_PER_BUFFER = 25; 	// AAC, frame/buffer/sec
-    private static final boolean DEBUG = true;	// TODO set false on release
+public class AudioCaptureThread extends BaseAudioCapture {
+    private final String TAG = "AudioCaptureThread";
+    private static final boolean DEBUG = true;    // TODO set false on release
     private AudioRecordThread mAudioRecordThread = null;
     private boolean mIsCapturing = false;
-    public AudioCaptureThread(){
+    private AudioMediaData mAudioMediaData;
+    public AudioCaptureThread(AudioMediaData audioMediaData) {
         super();
+        this.mAudioMediaData = audioMediaData;
     }
 
     @Override
-    public void startAudioCapture(){
+    public void startAudioCapture() {
         if (mAudioRecordThread == null) {
             mIsCapturing = true;
             mAudioRecordThread = new AudioRecordThread();
+            mAudioRecordThread.setName("AudioCaptureThread");
             mAudioRecordThread.start();
         }
     }
 
     @Override
-    public void stopAudioCapture(){
+    public void stopAudioCapture() {
         mIsCapturing = false;
     }
 
@@ -50,18 +52,18 @@ public class AudioCaptureThread extends BaseAudioCapture{
             android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_URGENT_AUDIO);
             try {
                 final int min_buffer_size = AudioRecord.getMinBufferSize(
-                        SAMPLE_RATE, AudioFormat.CHANNEL_IN_MONO,
-                        AudioFormat.ENCODING_PCM_16BIT);
-                int buffer_size = SAMPLES_PER_FRAME * FRAMES_PER_BUFFER;
+                        mAudioMediaData.getAudioSampleRate(), mAudioMediaData.getAudioChannelFormat(),
+                        mAudioMediaData.getAudioPcmBit());
+                int buffer_size = mAudioMediaData.getAudioPerFrame() * mAudioMediaData.getAudioFrameBuffer();
                 if (buffer_size < min_buffer_size)
-                    buffer_size = ((min_buffer_size / SAMPLES_PER_FRAME) + 1) * SAMPLES_PER_FRAME * 2;
+                    buffer_size = ((min_buffer_size / mAudioMediaData.getAudioPerFrame()) + 1) * mAudioMediaData.getAudioPerFrame() * 2;
 
                 AudioRecord audioRecord = null;
                 for (final int source : AUDIO_SOURCES) {
                     try {
                         audioRecord = new AudioRecord(
-                                source, SAMPLE_RATE,
-                                AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT, buffer_size);
+                                source, mAudioMediaData.getAudioSampleRate(),
+                                mAudioMediaData.getAudioChannelFormat(), mAudioMediaData.getAudioPcmBit(), buffer_size);
                         if (audioRecord.getState() != AudioRecord.STATE_INITIALIZED)
                             audioRecord = null;
                     } catch (final Exception e) {
@@ -72,21 +74,21 @@ public class AudioCaptureThread extends BaseAudioCapture{
                 if (audioRecord != null) {
                     try {
                         if (mIsCapturing) {
-                            if (DEBUG) Log.d(TAG, "AudioRecordThread:start audio recording");
-                            final ByteBuffer buf = ByteBuffer.allocateDirect(SAMPLES_PER_FRAME);
+                            LogUtil.d("AudioRecordThread:start audio recording");
+                            final ByteBuffer buf = ByteBuffer.allocateDirect(mAudioMediaData.getAudioPerFrame());
                             int readBytes;
                             audioRecord.startRecording();
                             try {
-                                for (;mIsCapturing;) {
+                                for (; mIsCapturing; ) {
                                     // read audio data from internal mic
                                     buf.clear();
-                                    readBytes = audioRecord.read(buf, SAMPLES_PER_FRAME);
+                                    readBytes = audioRecord.read(buf, mAudioMediaData.getAudioPerFrame());
                                     if (readBytes > 0) {
                                         // set audio data to encoder
                                         buf.position(readBytes);
                                         buf.flip();
                                         currentPTSUs = getPTSUs();
-                                        mCaptureDataConnector.onDataAvailable(new VideoCaptureFrame(buf,readBytes,currentPTSUs));
+                                        mCaptureDataConnector.onDataAvailable(new VideoCaptureFrame(buf, readBytes, currentPTSUs));
                                         prevOutputPTSUs = currentPTSUs;
                                     }
                                 }
@@ -100,16 +102,16 @@ public class AudioCaptureThread extends BaseAudioCapture{
                         audioRecord.release();
                     }
                 } else {
-                    Log.e(TAG, "failed to initialize AudioRecord");
+                    LogUtil.e("failed to initialize AudioRecord");
                 }
             } catch (final Exception e) {
-                Log.e(TAG, "AudioRecordThread#run", e);
+                LogUtil.e("AudioRecordThread#run" + e);
             }
-            if (DEBUG) Log.v(TAG, "AudioRecordThread:finished");
+            LogUtil.v("AudioRecordThread:finished");
         }
     }
 
-    private static final int[] AUDIO_SOURCES = new int[] {
+    private static final int[] AUDIO_SOURCES = new int[]{
             MediaRecorder.AudioSource.MIC,
             MediaRecorder.AudioSource.DEFAULT,
             MediaRecorder.AudioSource.CAMCORDER,
@@ -119,6 +121,7 @@ public class AudioCaptureThread extends BaseAudioCapture{
 
     private long prevOutputPTSUs = 0;
     private long currentPTSUs = 0;
+
     protected long getPTSUs() {
         long result = System.nanoTime() / 1000L;
         // presentationTimeUs should be monotonic

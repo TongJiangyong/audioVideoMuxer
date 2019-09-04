@@ -27,24 +27,30 @@ import java.nio.ByteBuffer;
 import java.text.SimpleDateFormat;
 import java.util.Locale;
 
-import android.util.Log;
+import android.media.MediaCodec;
+import android.os.Handler;
 
 import com.serenegiant.encoder.BaseEncoder;
 import com.serenegiant.encoder.MediaCodecAudioEncoder;
 import com.serenegiant.encoder.MediaCodecEncoder;
 import com.serenegiant.encoder.MediaCodecVideoEncoder;
-import com.serenegiant.encoder.MediaEncoderFormat;
+import com.serenegiant.model.AudioMediaData;
+import com.serenegiant.model.MediaEncoderFormat;
+import com.serenegiant.model.BufferInfoEx;
+import com.serenegiant.model.EncodedFrame;
+import com.serenegiant.model.VideoMediaData;
+import com.serenegiant.utils.LogUtil;
 
 import io.agora.RTMPMuxer;
 
 
-public class RtmpMuxer extends BaseMuxer{
-    private static final boolean DEBUG = true;	// TODO set false on release
+public class RtmpMuxer extends BaseMuxer {
+    private static final boolean DEBUG = true;    // TODO set false on release
     private static final String TAG = "RtmpMuxer";
     private static final SimpleDateFormat mDateTimeFormat = new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss", Locale.US);
     private StreamPublishParam mStreamPublishParam;
     private String mOutputPath;
-    private final RTMPMuxer mRtmpMuxer;	// API >= 18
+    private final RTMPMuxer mRtmpMuxer;    // API >= 18
     private int mEncoderCount, mStatredCount;
     private boolean mIsStarted;
     public boolean mIsConnected;
@@ -53,8 +59,24 @@ public class RtmpMuxer extends BaseMuxer{
     protected TimeIndexCounter videoTimeIndexCounter = new TimeIndexCounter();
     protected TimeIndexCounter audioTimeIndexCounter = new TimeIndexCounter();
 
-    public RtmpMuxer(StreamPublishParam publishParam) throws IOException {
-        super();
+    private int keyFrameCount = 0;
+    private int frameCount = 0;
+    private long bitrateCount = 0;
+    private boolean startCount = false;
+    private Handler mFrameCountHandler;
+    private Runnable mFrameCountProducer = new Runnable() {
+        @Override
+        public void run() {
+            LogUtil.d("frame count fps:" + frameCount + " bitrate:" + (bitrateCount * 8 / 1000));
+            frameCount = 0;
+            bitrateCount = 0;
+            mFrameCountHandler.postDelayed(mFrameCountProducer, 1000);
+        }
+    };
+
+
+    public RtmpMuxer(StreamPublishParam publishParam,VideoMediaData videoMediaData,AudioMediaData audioMediaData) throws IOException {
+        super(videoMediaData,audioMediaData);
         try {
             mStreamPublishParam = publishParam;
         } catch (final NullPointerException e) {
@@ -67,37 +89,51 @@ public class RtmpMuxer extends BaseMuxer{
         initRtmpMuxer(mStreamPublishParam);
     }
 
-    private void initRtmpMuxer(StreamPublishParam publishParam){
+    private void initRtmpMuxer(StreamPublishParam publishParam) {
         this.mStreamPublishParam = publishParam;
         int open = mRtmpMuxer.open(this.mStreamPublishParam.getRtmpUrl(),
                 this.mStreamPublishParam.getVideoWidth(), this.mStreamPublishParam.getVideoHeight());
-        if (DEBUG) Log.d(TAG,  "initRtmpMuxer open:"+open);
+        LogUtil.d("initRtmpMuxer open:" + open);
         boolean connected = mRtmpMuxer.isConnected();
         //int connected = mRtmpMuxer.isConnected();
         //if(connected>0){
-        if(connected){
+        if (connected) {
             mIsConnected = true;
         }
-        if (DEBUG) Log.d(TAG,  "initRtmpMuxer connected:"+connected+ " mIsConnected:"+mIsConnected);
-        if(mStreamPublishParam.isNeedLocalWrite()){
+        LogUtil.d("initRtmpMuxer connected:" + connected + " mIsConnected:" + mIsConnected);
+        if (mStreamPublishParam.isNeedLocalWrite()) {
             mRtmpMuxer.file_open(this.mStreamPublishParam.getOutputFilePath());
             mRtmpMuxer.write_flv_header(true, true);
         }
         videoTimeIndexCounter.reset();
         audioTimeIndexCounter.reset();
+        mFrameCountHandler = new Handler();
+
         frameSender = new FrameSender(new FrameSender.FrameSenderCallback() {
             @Override
-            public void onStart() {}
+            public void onStart() {
+            }
 
             @Override
             public void onSendVideo(FramePool.Frame sendFrame) {
-                if (DEBUG) Log.d(TAG,  "onSendVideo "+sendFrame.length);
-                mRtmpMuxer.writeVideo(sendFrame.data, 0, sendFrame.length, sendFrame.bufferInfo.getTotalTime());
+
+                if (mRtmpMuxer.writeVideo(sendFrame.data, 0, sendFrame.length, sendFrame.bufferInfo.getTotalTime()) >= 0) {
+                    LogUtil.d("onSendVideo " + sendFrame.length + " pts:" + sendFrame.bufferInfo.getTotalTime());
+                    if (!startCount) {
+                        startCount = true;
+                        mFrameCountHandler.postDelayed(mFrameCountProducer, 1000);
+                    }
+                    bitrateCount = bitrateCount + sendFrame.length;
+                    frameCount++;
+                } else {
+                    LogUtil.d("onSendVideo error " + sendFrame.length);
+                }
+
             }
 
             @Override
             public void onSendAudio(FramePool.Frame sendFrame) {
-                if (DEBUG) Log.d(TAG,  "onSendAudio "+sendFrame.length);
+                LogUtil.d("onSendAudio " + sendFrame.length + " pts:" + sendFrame.bufferInfo.getTotalTime());
                 mRtmpMuxer.writeAudio(sendFrame.data, 0, sendFrame.length, sendFrame.bufferInfo.getTotalTime());
             }
 
@@ -133,25 +169,28 @@ public class RtmpMuxer extends BaseMuxer{
         if (mAudioEncoder != null)
             mAudioEncoder.stopRecording();
         mAudioEncoder = null;
+        mFrameCountHandler.removeCallbacks(mFrameCountProducer);
     }
 
 
 //**********************************************************************
 //**********************************************************************
+
     /**
      * assign encoder to this calss. this is called from encoder.
+     *
      * @param encoder instance of MediaCodecVideoEncoder or MediaCodecAudioEncoder
      */
     @Override
-	/*package*/ public void addEncoder(final BaseEncoder encoder) {
+    public void addEncoder(final BaseEncoder encoder) {
         if (encoder instanceof MediaCodecVideoEncoder) {
             if (mVideoEncoder != null)
                 throw new IllegalArgumentException("Video encoder already added.");
-            mVideoEncoder = (MediaCodecEncoder)encoder;
+            mVideoEncoder = (MediaCodecEncoder) encoder;
         } else if (encoder instanceof MediaCodecAudioEncoder) {
             if (mAudioEncoder != null)
                 throw new IllegalArgumentException("Video encoder already added.");
-            mAudioEncoder = (MediaCodecEncoder)encoder;
+            mAudioEncoder = (MediaCodecEncoder) encoder;
         } else
             throw new IllegalArgumentException("unsupported encoder");
         mEncoderCount = (mVideoEncoder != null ? 1 : 0) + (mAudioEncoder != null ? 1 : 0);
@@ -159,56 +198,57 @@ public class RtmpMuxer extends BaseMuxer{
 
     /**
      * request start recording from encoder
+     *
      * @return true when muxer is ready to write
      */
     @Override
-	/*package*/ public synchronized boolean startMuxer() {
-        if (DEBUG) Log.d(TAG,  "start");
+	public synchronized boolean startMuxer() {
+        LogUtil.d("start");
         mStatredCount++;
         if ((mEncoderCount > 0) && (mStatredCount == mEncoderCount)) {
             mIsStarted = true;
             notifyAll();
-            if (DEBUG) Log.d(TAG,  "MediaMuxer started mIsStarted:"+mIsStarted+ " mIsConnected:"+mIsConnected);
+            LogUtil.d("MediaMuxer started mIsStarted:" + mIsStarted + " mIsConnected:" + mIsConnected);
         }
-        return mIsStarted&&mIsConnected;
+        return mIsStarted && mIsConnected;
     }
 
     /**
      * request stop recording from encoder when encoder received EOS
      */
     @Override
-	/*package*/ public synchronized void stopMuxer() {
-        if (DEBUG) Log.d(TAG,  "stop:mStatredCount=" + mStatredCount);
+	 public synchronized void stopMuxer() {
+        LogUtil.d("stop:mStatredCount=" + mStatredCount);
         mStatredCount--;
         if ((mEncoderCount > 0) && (mStatredCount <= 0)) {
-            if(mStreamPublishParam.isNeedLocalWrite()) {
+            if (mStreamPublishParam.isNeedLocalWrite()) {
                 mRtmpMuxer.file_close();
             }
             mRtmpMuxer.close();
             mIsStarted = false;
-            if (DEBUG) Log.d(TAG,  "MediaMuxer stopped:");
+            LogUtil.d("MediaMuxer stopped:");
         }
     }
 
     @Override
-	public synchronized int addTrackToMuxer( MediaEncoderFormat format) {
+    public synchronized int addTrackToMuxer(MediaEncoderFormat format) {
         return 0;
     }
 
     @Override
     public synchronized boolean isMuxerStarted() {
-        return mIsStarted&&mIsConnected;
+        return mIsStarted && mIsConnected;
     }
 
+
     /**
-     *
      * @param encodedFrame
      */
     @Override
-	/*package*/ protected synchronized void writeEncodedData(EncodedFrame encodedFrame) {
-        if (mStatredCount > 0){
-            if (DEBUG) Log.i(TAG, "addTrack:" + encodedFrame.getmTrackIndex() + ",EncodedFrame=" + encodedFrame);
-            ByteBuffer mBuffer =  encodedFrame.getEncodedByteBuffer();
+	protected synchronized void writeEncodedData(EncodedFrame encodedFrame) {
+        if (mStatredCount > 0) {
+            LogUtil.i("addTrack:" + encodedFrame.getmTrackIndex() + ",EncodedFrame=" + encodedFrame);
+            ByteBuffer mBuffer = encodedFrame.getEncodedByteBuffer();
             mBuffer.position(0);
 
             int offset = 0;
@@ -216,12 +256,19 @@ public class RtmpMuxer extends BaseMuxer{
             int readLength = encodedFrame.getmBufferInfo().size - mBuffer.position();
             byte[] buffer = new byte[readLength];
             mBuffer.get(buffer, offset, readLength);
-            if(encodedFrame.getCodecType()==0){
-                if (DEBUG) Log.i(TAG, "audio sendAddFrameMessage:"+encodedFrame.getCodecType()+" "+readLength);
+            if (encodedFrame.getCodecType() == MediaEncoderFormat.CodecType.AUDIO) {
+                LogUtil.i("audio sendAddFrameMessage:" + encodedFrame.getCodecType() + " " + readLength);
                 audioTimeIndexCounter.calcTotalTime(encodedFrame.getmBufferInfo().presentationTimeUs);
                 frameSender.sendAddFrameMessage(buffer, offset, readLength, new BufferInfoEx(encodedFrame.getmBufferInfo(), audioTimeIndexCounter.getTimeIndex()), FramePool.Frame.TYPE_AUDIO);
-            }else if(encodedFrame.getCodecType()==1){
-                if (DEBUG) Log.i(TAG, "vido sendAddFrameMessage:"+encodedFrame.getCodecType()+" "+readLength);
+            } else if (encodedFrame.getCodecType() == MediaEncoderFormat.CodecType.VIDEO) {
+                boolean keyFrame = (encodedFrame.getmBufferInfo().flags & MediaCodec.BUFFER_FLAG_KEY_FRAME) != 0;
+                LogUtil.i("video sendAddFrameMessage:" + encodedFrame.getCodecType() + " " + readLength + " keyFrame:" + keyFrame + " keyFrameCount" + keyFrameCount);
+                if (keyFrame) {
+                    keyFrameCount = 0;
+                    LogUtil.i("frame count video keyframe size:" + readLength);
+                } else {
+                    keyFrameCount++;
+                }
                 videoTimeIndexCounter.calcTotalTime(encodedFrame.getmBufferInfo().presentationTimeUs);
                 frameSender.sendAddFrameMessage(buffer, offset, readLength, new BufferInfoEx(encodedFrame.getmBufferInfo(), videoTimeIndexCounter.getTimeIndex()), FramePool.Frame.TYPE_VIDEO);
             }
@@ -231,7 +278,7 @@ public class RtmpMuxer extends BaseMuxer{
     }
 
     @Override
-    public int onDataAvailable(EncodedFrame data){
+    public int onDataAvailable(EncodedFrame data) {
         this.writeEncodedData(data);
         return 0;
     }

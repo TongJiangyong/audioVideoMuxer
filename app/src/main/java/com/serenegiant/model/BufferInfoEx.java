@@ -18,7 +18,7 @@
  *
  */
 
-package com.serenegiant.muxer;
+package com.serenegiant.model;
 
 import android.media.MediaCodec;
 

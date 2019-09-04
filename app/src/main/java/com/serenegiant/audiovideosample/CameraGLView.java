@@ -42,14 +42,13 @@ import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
 import android.util.AttributeSet;
-import android.util.Log;
+import com.serenegiant.utils.LogUtil;
 import android.view.Display;
 import android.view.Surface;
 import android.view.SurfaceHolder;
 import android.view.WindowManager;
 
-import com.serenegiant.encoder.MediaCodecVideoEncoder;
-import com.serenegiant.encoder.VideoCaptureFrame;
+import com.serenegiant.model.VideoCaptureFrame;
 import com.serenegiant.encoder.VideoEncoderDataPrepare;
 import com.serenegiant.gles.core.GlUtil;
 import com.serenegiant.glutils.GLDrawer2D;
@@ -73,6 +72,7 @@ public final class CameraGLView extends GLSurfaceView {
 	private boolean mHasSurface;
 	private CameraHandler mCameraHandler = null;
 	private int mVideoWidth, mVideoHeight;
+	private static int  mVideoFps;
 	private int mRotation;
 	private int mScaleMode = SCALE_STRETCH_FIT;
 
@@ -86,7 +86,7 @@ public final class CameraGLView extends GLSurfaceView {
 
 	public CameraGLView(final Context context, final AttributeSet attrs, final int defStyle) {
 		super(context, attrs);
-		if (DEBUG) Log.v(TAG, "CameraGLView:");
+		LogUtil.v("CameraGLView:");
 		mRenderer = new CameraSurfaceRenderer(this);
 		setEGLContextClientVersion(2);	// GLES 2.0, API >= 8
 		setRenderer(mRenderer);
@@ -97,11 +97,11 @@ public final class CameraGLView extends GLSurfaceView {
 
 	@Override
 	public void onResume() {
-		if (DEBUG) Log.v(TAG, "onResume:");
+		LogUtil.v("onResume:");
 		super.onResume();
 		if (mHasSurface) {
 			if (mCameraHandler == null) {
-				if (DEBUG) Log.v(TAG, "surface already exist");
+				LogUtil.v("surface already exist");
 				startPreview(getWidth(),  getHeight());
 			}
 		}
@@ -109,7 +109,7 @@ public final class CameraGLView extends GLSurfaceView {
 
 	@Override
 	public void onPause() {
-		if (DEBUG) Log.v(TAG, "onPause:");
+		LogUtil.v("onPause:");
 		if (mCameraHandler != null) {
 			// just request stop prviewing
 			mCameraHandler.stopPreview(false);
@@ -157,14 +157,19 @@ public final class CameraGLView extends GLSurfaceView {
 		return mVideoHeight;
 	}
 
+
+	public int getVideoFps() {
+		return mVideoFps;
+	}
+
 	public SurfaceTexture getSurfaceTexture() {
-		if (DEBUG) Log.v(TAG, "getSurfaceTexture:");
+		LogUtil.v("getSurfaceTexture:");
 		return mRenderer != null ? mRenderer.mSTexture : null;
 	}
 
 	@Override
 	public void surfaceDestroyed(final SurfaceHolder holder) {
-		if (DEBUG) Log.v(TAG, "surfaceDestroyed:");
+		LogUtil.v("surfaceDestroyed:");
 		if (mCameraHandler != null) {
 			// wait for finish previewing here
 			// otherwise camera try to display on un-exist Surface and some error will occure
@@ -177,7 +182,7 @@ public final class CameraGLView extends GLSurfaceView {
 	}
 
 	public void setVideoCodecContext(final VideoEncoderDataPrepare videoDataPrepare) {
-		if (DEBUG) Log.v(TAG, "setVideoCodecContext:tex_id=" + mRenderer.hTex + ", videoDataPrepare=" + videoDataPrepare);
+		LogUtil.v("setVideoCodecContext:tex_id=" + mRenderer.hTex + ", videoDataPrepare=" + videoDataPrepare);
 		queueEvent(new Runnable() {
 			@Override
 			public void run() {
@@ -219,17 +224,17 @@ public final class CameraGLView extends GLSurfaceView {
 		private float[] mMVP = new float[16];
 
 		public CameraSurfaceRenderer(final CameraGLView parent) {
-			if (DEBUG) Log.v(TAG, "CameraSurfaceRenderer:");
+			LogUtil.v("CameraSurfaceRenderer:");
 			mWeakParent = new WeakReference<CameraGLView>(parent);
 			Matrix.setIdentityM(mMvpMatrix, 0);
 		}
 
 		@Override
 		public void onSurfaceCreated(final GL10 unused, final EGLConfig config) {
-			if (DEBUG) Log.v(TAG, "onSurfaceCreated:");
+			LogUtil.v("onSurfaceCreated:");
 			// This renderer required OES_EGL_image_external extension
 			final String extensions = GLES20.glGetString(GLES20.GL_EXTENSIONS);	// API >= 8
-//			if (DEBUG) Log.i(TAG, "onSurfaceCreated:Gl extensions: " + extensions);
+//			LogUtil.i("onSurfaceCreated:Gl extensions: " + extensions);
 			if (!extensions.contains("OES_EGL_image_external"))
 				throw new RuntimeException("This system does not support OES_EGL_image_external.");
 			// create textur ID
@@ -250,7 +255,7 @@ public final class CameraGLView extends GLSurfaceView {
 
 		@Override
 		public void onSurfaceChanged(final GL10 unused, final int width, final int height) {
-			if (DEBUG) Log.v(TAG, String.format("onSurfaceChanged:(%d,%d)", width, height));
+			LogUtil.v(String.format("onSurfaceChanged:(%d,%d)", width, height));
 			// if at least with or height is zero, initialization of this view is still progress.
 			if ((width == 0) || (height == 0)) return;
 			updateViewport();
@@ -264,7 +269,7 @@ public final class CameraGLView extends GLSurfaceView {
 		 * when GLSurface context is soon destroyed
 		 */
 		public void onSurfaceDestroyed() {
-			if (DEBUG) Log.v(TAG, "onSurfaceDestroyed:");
+			LogUtil.v("onSurfaceDestroyed:");
 			if (mDrawer != null) {
 				mDrawer.release();
 				mDrawer = null;
@@ -281,16 +286,16 @@ public final class CameraGLView extends GLSurfaceView {
 			if (parent != null) {
 				int view_width = parent.getWidth();
 				int view_height = parent.getHeight();
-				Log.i(TAG,"view_width:"+view_width+" view_height"+view_height);
+				LogUtil.i("view_width:"+view_width+" view_height"+view_height);
 				GLES20.glViewport(0, 0, view_width, view_height);
 				GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT);
 				final double video_width = parent.mVideoWidth;
 				final double video_height = parent.mVideoHeight;
-				Log.i(TAG,"video_width:"+video_width+" video_height"+video_height);
+				LogUtil.i("video_width:"+video_width+" video_height"+video_height);
 				if (video_width == 0 || video_height == 0) return;
 				Matrix.setIdentityM(mMvpMatrix, 0);
 				final double view_aspect = view_width / (double)view_height;
-				Log.i(TAG, String.format("view(%d,%d)%f,video(%1.0f,%1.0f)", view_width, view_height, view_aspect, video_width, video_height));
+				LogUtil.i(String.format("view(%d,%d)%f,video(%1.0f,%1.0f)", view_width, view_height, view_aspect, video_width, video_height));
 				switch (parent.mScaleMode) {
 				case SCALE_STRETCH_FIT:
 					break;
@@ -313,7 +318,7 @@ public final class CameraGLView extends GLSurfaceView {
 						y = (view_height - height) / 2;
 					}
 					// set viewport to draw keeping aspect ration of camera image
-					if (DEBUG) Log.v(TAG, String.format("xy(%d,%d),size(%d,%d)", x, y, width, height));
+					LogUtil.v(String.format("xy(%d,%d),size(%d,%d)", x, y, width, height));
 					GLES20.glViewport(x, y, width, height);
 					break;
 				}
@@ -326,7 +331,7 @@ public final class CameraGLView extends GLSurfaceView {
 						? Math.max(scale_x,  scale_y) : Math.min(scale_x, scale_y));
 					final double width = scale * video_width;
 					final double height = scale * video_height;
-					Log.v(TAG, String.format("size(%1.0f,%1.0f),scale(%f,%f),mat(%f,%f)",
+					LogUtil.v(String.format("size(%1.0f,%1.0f),scale(%f,%f),mat(%f,%f)",
 						width, height, scale_x, scale_y, width / view_width, height / view_height));
 					Matrix.scaleM(mMvpMatrix, 0, (float)(width / view_width), (float)(height / view_height), 1.0f);
 					break;
@@ -369,7 +374,7 @@ public final class CameraGLView extends GLSurfaceView {
 						// notify to capturing thread that the camera frame is available.
 //						mVideoEncoder.frameAvailableSoon(mStMatrix);
 						VideoCaptureFrame videoCaptureFrame= new VideoCaptureFrame(mSTexture,hTex,mMvpMatrix,count);
-						//Log.i("TJY","videoEncoderDataPrepare.frameAvailable:"+videoCaptureFrame+" time:"+mSTexture.getTimestamp());
+						//LogUtil.i("TJY","videoEncoderDataPrepare.frameAvailable:"+videoCaptureFrame+" time:"+mSTexture.getTimestamp());
 						videoEncoderDataPrepare.frameAvailable(videoCaptureFrame);
 					}
 				}
@@ -410,7 +415,7 @@ public final class CameraGLView extends GLSurfaceView {
 				sendEmptyMessage(MSG_PREVIEW_STOP);
 				if (needWait && mThread.mIsRunning) {
 					try {
-						if (DEBUG) Log.d(TAG, "wait for terminating of camera thread");
+						LogUtil.d("wait for terminating of camera thread");
 						wait();
 					} catch (final InterruptedException e) {
 					}
@@ -473,7 +478,7 @@ public final class CameraGLView extends GLSurfaceView {
     	 */
 		@Override
 		public void run() {
-            if (DEBUG) Log.d(TAG, "Camera thread start");
+            LogUtil.d("Camera thread start");
             Looper.prepare();
             synchronized (mReadyFence) {
                 mHandler = new CameraHandler(this);
@@ -481,7 +486,7 @@ public final class CameraGLView extends GLSurfaceView {
                 mReadyFence.notify();
             }
             Looper.loop();
-            if (DEBUG) Log.d(TAG, "Camera thread finish");
+            LogUtil.d("Camera thread finish");
             synchronized (mReadyFence) {
                 mHandler = null;
                 mIsRunning = false;
@@ -494,7 +499,7 @@ public final class CameraGLView extends GLSurfaceView {
 		 * @param height
 		 */
 		private final void startPreview(final int width, final int height) {
-			if (DEBUG) Log.v(TAG, "startPreview:");
+			LogUtil.v("startPreview:");
 			final CameraGLView parent = mWeakParent.get();
 			if ((parent != null) && (mCamera == null)) {
 				// This is a sample project so just use 0 as camera ID.
@@ -508,7 +513,7 @@ public final class CameraGLView extends GLSurfaceView {
 					} else if(focusModes.contains(Camera.Parameters.FOCUS_MODE_AUTO)) {
 						params.setFocusMode(Camera.Parameters.FOCUS_MODE_AUTO);
 					} else {
-						if (DEBUG) Log.i(TAG, "Camera does not support autofocus");
+						LogUtil.i("Camera does not support autofocus");
 					}
 					// let's try fastest frame rate. You will get near 60fps, but your device become hot.
 					final List<int[]> supportedFpsRange = params.getSupportedPreviewFpsRange();
@@ -516,12 +521,13 @@ public final class CameraGLView extends GLSurfaceView {
 //					int[] range;
 //					for (int i = 0; i < n; i++) {
 //						range = supportedFpsRange.get(i);
-//						Log.i(TAG, String.format("supportedFpsRange(%d)=(%d,%d)", i, range[0], range[1]));
+//						LogUtil.i(String.format("supportedFpsRange(%d)=(%d,%d)", i, range[0], range[1]));
 //					}
 					final int[] max_fps = supportedFpsRange.get(supportedFpsRange.size() - 1);
-					Log.i(TAG, String.format("fps:%d-%d", max_fps[0], max_fps[1]));
+					LogUtil.i(String.format("fps:%d-%d", max_fps[0], max_fps[1]));
 					params.setPreviewFpsRange(max_fps[0], max_fps[1]);
 					params.setRecordingHint(true);
+					mVideoFps = max_fps[0];
 					// request closest supported preview size
 					final Camera.Size closestSize = getClosestSupportedSize(
 						params.getSupportedPreviewSizes(), width, height);
@@ -535,7 +541,7 @@ public final class CameraGLView extends GLSurfaceView {
 					mCamera.setParameters(params);
 					// get the actual preview size
 					final Camera.Size previewSize = mCamera.getParameters().getPreviewSize();
-					Log.i(TAG, String.format("previewSize(%d, %d)", previewSize.width, previewSize.height));
+					LogUtil.i(String.format("previewSize(%d, %d)", previewSize.width, previewSize.height));
 					// adjust view size with keeping the aspect ration of camera preview.
 					// here is not a UI thread and we should request parent view to execute.
 					parent.post(new Runnable() {
@@ -548,13 +554,13 @@ public final class CameraGLView extends GLSurfaceView {
 					st.setDefaultBufferSize(previewSize.width, previewSize.height);
 					mCamera.setPreviewTexture(st);
 				} catch (final IOException e) {
-					Log.e(TAG, "startPreview:", e);
+					LogUtil.e("startPreview:"+ e);
 					if (mCamera != null) {
 						mCamera.release();
 						mCamera = null;
 					}
 				} catch (final RuntimeException e) {
-					Log.e(TAG, "startPreview:", e);
+					LogUtil.e("startPreview:"+ e);
 					if (mCamera != null) {
 						mCamera.release();
 						mCamera = null;
@@ -586,7 +592,7 @@ public final class CameraGLView extends GLSurfaceView {
 		 * stop camera preview
 		 */
 		private void stopPreview() {
-			if (DEBUG) Log.v(TAG, "stopPreview:");
+			LogUtil.v("stopPreview:");
 			if (mCamera != null) {
 				mCamera.stopPreview();
 		        mCamera.release();
@@ -602,7 +608,7 @@ public final class CameraGLView extends GLSurfaceView {
 		 * @param params
 		 */
 		private final void setRotation(final Camera.Parameters params) {
-			if (DEBUG) Log.v(TAG, "setRotation:");
+			LogUtil.v("setRotation:");
 			final CameraGLView parent = mWeakParent.get();
 			if (parent == null) return;
 

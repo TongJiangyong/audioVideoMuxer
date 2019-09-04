@@ -1,21 +1,23 @@
-package com.serenegiant.muxer;
+package com.serenegiant.model;
 
 import android.media.MediaCodec;
 
 import java.nio.ByteBuffer;
+
 
 /**
  * Created by yong on 2019/8/30.
  */
 
 public class EncodedFrame {
+
     private int mTrackIndex;
     //0为音频 1为视频
-    private int codecType;
+    private MediaEncoderFormat.CodecType codecType;
     private ByteBuffer encodedByteBuffer;
     private MediaCodec.BufferInfo mBufferInfo;
 
-    public EncodedFrame(int codecType, int mTrackIndex, ByteBuffer encodedByteBuffer, MediaCodec.BufferInfo mBufferInfo) {
+    public EncodedFrame(MediaEncoderFormat.CodecType codecType, int mTrackIndex, ByteBuffer encodedByteBuffer, MediaCodec.BufferInfo mBufferInfo) {
         this.mTrackIndex = mTrackIndex;
         this.encodedByteBuffer = encodedByteBuffer;
         this.mBufferInfo = mBufferInfo;
@@ -46,11 +48,11 @@ public class EncodedFrame {
         this.mBufferInfo = mBufferInfo;
     }
 
-    public int getCodecType() {
+    public MediaEncoderFormat.CodecType getCodecType() {
         return codecType;
     }
 
-    public void setCodecType(int codecType) {
+    public void setCodecType(MediaEncoderFormat.CodecType codecType) {
         this.codecType = codecType;
     }
 

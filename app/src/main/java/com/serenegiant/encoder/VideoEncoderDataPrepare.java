@@ -4,7 +4,7 @@ import android.opengl.EGLContext;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
-import android.util.Log;
+
 import android.view.Surface;
 
 import com.serenegiant.connector.SinkConnector;
@@ -14,6 +14,9 @@ import com.serenegiant.gles.ProgramTextureOES;
 import com.serenegiant.gles.core.EglCore;
 import com.serenegiant.gles.core.Program;
 import com.serenegiant.gles.core.WindowSurface;
+import com.serenegiant.model.VideoCaptureFrame;
+import com.serenegiant.model.VideoMediaData;
+import com.serenegiant.utils.LogUtil;
 
 import java.lang.ref.WeakReference;
 
@@ -78,21 +81,21 @@ public class VideoEncoderDataPrepare implements Runnable, SinkConnector<VideoCap
         }
         Looper.loop();
 
-        Log.d(TAG, "VideoEncoderDataPrepare thread exiting");
+        LogUtil.d("VideoEncoderDataPrepare thread exiting");
         synchronized (mReadyFence) {
             mReady = mRunning = false;
             mHandler = null;
         }
-        Log.d(TAG, "VideoEncoderDataPrepare thread exiting over:"+mReady);
+        LogUtil.d("VideoEncoderDataPrepare thread exiting over:" + mReady);
     }
 
     public void startEncoderDataPrepare(Surface encoderInputSurface, VideoMediaData videoMediaData) {
-        Log.d(TAG, "startEncoderDataPrepare");
+        LogUtil.d("startEncoderDataPrepare");
         this.mInputSurface = encoderInputSurface;
         this.videoMediaData = videoMediaData;
         synchronized (mReadyFence) {
             if (mRunning) {
-                Log.w(TAG, "Encoder thread already running");
+                LogUtil.w("Encoder thread already running");
                 return;
             }
             mRunning = true;
@@ -109,8 +112,8 @@ public class VideoEncoderDataPrepare implements Runnable, SinkConnector<VideoCap
 
     public void stopEncoderDataPrepare() {
         //TODO check whay handler dead
-        Log.i(TAG,"stopEncoderDataPrepare");
-        if(mHandler!=null){
+        LogUtil.i("stopEncoderDataPrepare");
+        if (mHandler != null) {
             mHandler.sendMessage(mHandler.obtainMessage(MSG_RELEASE_EGL_CONTEXT));
             mHandler.sendMessage(mHandler.obtainMessage(MSG_QUIT));
         }
@@ -125,7 +128,7 @@ public class VideoEncoderDataPrepare implements Runnable, SinkConnector<VideoCap
                 return;
             }
         }
-        //Log.i("TJY","try to frameAvailable:"+videoCaptureFrame+" mReady:"+mReady);
+        //LogUtil.i("TJY","try to frameAvailable:"+videoCaptureFrame+" mReady:"+mReady);
         mHandler.sendMessage(mHandler.obtainMessage(MSG_FRAME_AVAILABLE, videoCaptureFrame));
     }
 
@@ -134,7 +137,7 @@ public class VideoEncoderDataPrepare implements Runnable, SinkConnector<VideoCap
     }
 
     public void initEncoderContext(EGLContext eglContext) {
-        Log.d(TAG, "initEncoderContext");
+        LogUtil.d("initEncoderContext");
         mHandler.sendMessage(mHandler.obtainMessage(MSG_INIT_EGL_CONTEXT, eglContext));
     }
 
@@ -143,16 +146,16 @@ public class VideoEncoderDataPrepare implements Runnable, SinkConnector<VideoCap
         mEglCore = new EglCore(eglContext, EglCore.FLAG_RECORDABLE);
         mInputWindowSurface = new WindowSurface(mEglCore, this.mInputSurface, true);
         mInputWindowSurface.makeCurrent();
-        if (this.videoMediaData.videoCaptureType == 0 && this.videoMediaData.videoCaptureFormat == 0) {
-            Log.d(TAG, "ProgramTextureOES");
+        if (this.videoMediaData.getVideoCaptureType() == 0 && this.videoMediaData.getVideoCaptureFormat() == 0) {
+            LogUtil.d("ProgramTextureOES");
             programTexture = new ProgramTextureOES();
-        } else if (this.videoMediaData.videoCaptureType == 0 && this.videoMediaData.videoCaptureFormat == 1) {
+        } else if (this.videoMediaData.getVideoCaptureType() == 0 && this.videoMediaData.getVideoCaptureFormat() == 1) {
             programTexture = new ProgramTexture2d();
         }
     }
 
     private void handleUpdateSharedContext(EGLContext newSharedContext) {
-        Log.d(TAG, "handleUpdatedSharedContext " + newSharedContext);
+        LogUtil.d("handleUpdatedSharedContext " + newSharedContext);
 
         // Release the EGLSurface and EGLContext.
         mInputWindowSurface.releaseEglSurface();
@@ -165,27 +168,29 @@ public class VideoEncoderDataPrepare implements Runnable, SinkConnector<VideoCap
         mInputWindowSurface.makeCurrent();
 
         // Create new programs and such for the new context.
-        if (this.videoMediaData.videoCaptureType == 0 && this.videoMediaData.videoCaptureFormat == 0) {
+        if (this.videoMediaData.getVideoCaptureType() == 0 && this.videoMediaData.getVideoCaptureFormat() == 0) {
             programTexture = new ProgramTextureOES();
-        } else if (this.videoMediaData.videoCaptureType == 0 && this.videoMediaData.videoCaptureFormat == 1) {
+        } else if (this.videoMediaData.getVideoCaptureType() == 0 && this.videoMediaData.getVideoCaptureFormat() == 1) {
             programTexture = new ProgramTexture2d();
         }
     }
 
     private float[] mMTX = new float[16];
     private float[] mMVP = new float[16];
+
     private void handleFrameAvailable(VideoCaptureFrame videoCaptureFrame) {
         mTextureId = videoCaptureFrame.mTextureId;
         videoCaptureFrame.mSurfaceTexture.getTransformMatrix(mMTX);
         videoCaptureFrame.mTexMatrix = mMTX;
-        if (DEBUG) Log.d(TAG, "handleFrameAvailable videoCaptureFrame" + videoCaptureFrame+ " time:"+videoCaptureFrame.mSurfaceTexture.getTimestamp());
+        if (DEBUG)
+            LogUtil.d("handleFrameAvailable videoCaptureFrame" + videoCaptureFrame + " time:" + videoCaptureFrame.mSurfaceTexture.getTimestamp());
         rawDataConnector.onDataAvailable(null);
         programTexture.drawFrame(mTextureId, videoCaptureFrame.mTexMatrix, videoCaptureFrame.mMvpMatrix);
         mInputWindowSurface.swapBuffers();
     }
 
     private void handleRleaseEglContext() {
-        Log.i(TAG,"handleRleaseEglContext");
+        LogUtil.i("handleRleaseEglContext");
         if (mInputWindowSurface != null) {
             mInputWindowSurface.release();
             mInputWindowSurface = null;
@@ -216,7 +221,7 @@ public class VideoEncoderDataPrepare implements Runnable, SinkConnector<VideoCap
 
             VideoEncoderDataPrepare encoder = mWeakEncoder.get();
             if (encoder == null) {
-                Log.w(TAG, "EncoderHandler.handleMessage: encoder is null");
+                LogUtil.w("EncoderHandler.handleMessage: encoder is null");
                 return;
             }
 
