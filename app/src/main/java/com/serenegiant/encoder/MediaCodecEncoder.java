@@ -81,13 +81,13 @@ public abstract class MediaCodecEncoder extends BaseEncoder implements Runnable 
 
     protected final IEncoderListener mListener;
 
-    public MediaCodecEncoder(final IEncoderListener listener,String codecThreadName) {
+    public MediaCodecEncoder(final IEncoderListener listener, String codecThreadName) {
         super(listener);
         if (listener == null) throw new NullPointerException("MediaEncoderListener is null");
 //    	if (muxer == null) throw new NullPointerException("AndroidMediaMuxer is null");
 //		mWeakMuxer = new WeakReference<AndroidMediaMuxer>(muxer);
 //		muxer.addEncoder(this);
-        mListener = listener;
+        this.mListener = listener;
         synchronized (mSync) {
             // create BufferInfo here for effectiveness(to reduce GC)
             mBufferInfo = new MediaCodec.BufferInfo();
@@ -246,13 +246,7 @@ public abstract class MediaCodecEncoder extends BaseEncoder implements Runnable 
         mBufferInfo = null;
     }
 
-    protected void signalEndOfInputStream() {
-        LogUtil.d("sending EOS to encoder codecType" + codecType);
-        // signalEndOfInputStream is only avairable for video encoding with surface
-        // and equivalent sending a empty buffer with BUFFER_FLAG_END_OF_STREAM flag.
-//		mMediaCodec.signalEndOfInputStream();	// API >= 18
-        encode(null, 0, getPTSUs());
-    }
+    protected abstract void signalEndOfInputStream();
 
     /**
      * Method to set byte array to the MediaCodec encoder
@@ -281,6 +275,9 @@ public abstract class MediaCodecEncoder extends BaseEncoder implements Runnable 
                             presentationTimeUs, MediaCodec.BUFFER_FLAG_END_OF_STREAM);
                     break;
                 } else {
+                    if (codecType == MediaEncoderFormat.CodecType.VIDEO) {
+                        LogUtil.i("queueInputBuffer:" + inputBufferIndex + " length:" + length);
+                    }
                     mMediaCodec.queueInputBuffer(inputBufferIndex, 0, length,
                             presentationTimeUs, 0);
                 }
@@ -311,6 +308,9 @@ public abstract class MediaCodecEncoder extends BaseEncoder implements Runnable 
         while (mIsCapturing) {
             // get encoded data with maximum timeout duration of TIMEOUT_USEC(=10[msec])
             encoderStatus = mMediaCodec.dequeueOutputBuffer(mBufferInfo, TIMEOUT_USEC);
+            if (codecType == MediaEncoderFormat.CodecType.VIDEO) {
+                LogUtil.i(codecType + "video drain encoderStatus" + encoderStatus);
+            }
             if (encoderStatus == MediaCodec.INFO_TRY_AGAIN_LATER) {
                 // wait 5 counts(=TIMEOUT_USEC x 5 = 50msec) until data/EOS come
                 if (!mIsEOS) {

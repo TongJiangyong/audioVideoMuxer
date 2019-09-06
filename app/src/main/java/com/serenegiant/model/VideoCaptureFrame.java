@@ -15,6 +15,9 @@ public class VideoCaptureFrame {
     public int mRotation;
     public long mTimeStamp;
     public byte[] mImage;
+    public byte[] rawData;
+    public int videoWidth;
+    public int videoHeight;
     public SurfaceTexture mSurfaceTexture;
     public boolean mMirror;
     public int mCount;
@@ -25,6 +28,12 @@ public class VideoCaptureFrame {
         this.mBuffer = buffer;
         this.mLength = length;
         this.mTimeStamp = timeStamp;
+    }
+
+    public VideoCaptureFrame(byte[] rawData, int videoWidth, int videoHeight) {
+        this.rawData = rawData;
+        this.videoWidth = videoWidth;
+        this.videoHeight = videoHeight;
     }
 
     public VideoCaptureFrame(SurfaceTexture texture, int textureId, float[] mvpMatrix, int count) {
@@ -50,14 +59,14 @@ public class VideoCaptureFrame {
         }
     }
 
+    @Override
     public String toString() {
         return "VideoCaptureFrame{" +
-                ", mCount=" + mCount +
+                ", videoWidth=" + videoWidth +
+                ", videoHeight=" + videoHeight +
                 ", mSurfaceTexture=" + mSurfaceTexture +
-                //", mMvpMatrix=" + mMvpMatrix +
-                ", mTimeStamp=" + mTimeStamp +
-                ", mTextureId=" + mTextureId +
-                //", mTexMatrix=" + Arrays.toString(mTexMatrix) +
+                ", mBuffer=" + mBuffer +
+                ", mLength=" + mLength +
                 '}';
     }
 }

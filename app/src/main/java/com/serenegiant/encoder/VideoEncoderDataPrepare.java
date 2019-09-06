@@ -5,6 +5,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
 
+import android.util.Log;
 import android.view.Surface;
 
 import com.serenegiant.connector.SinkConnector;
@@ -17,8 +18,17 @@ import com.serenegiant.gles.core.WindowSurface;
 import com.serenegiant.model.VideoCaptureFrame;
 import com.serenegiant.model.VideoMediaData;
 import com.serenegiant.utils.LogUtil;
+import com.serenegiant.utils.OtherUtil;
 
+import java.io.IOException;
 import java.lang.ref.WeakReference;
+import java.nio.ByteBuffer;
+
+import static com.serenegiant.model.VideoMediaData.CaptureFormat.I420;
+import static com.serenegiant.model.VideoMediaData.CaptureFormat.NV21;
+import static com.serenegiant.model.VideoMediaData.CaptureFormat.TEXTURE_OES;
+import static com.serenegiant.model.VideoMediaData.CaptureType.BYTE_ARRAY;
+import static com.serenegiant.model.VideoMediaData.CaptureType.TEXTURE;
 
 /**
  * Created by yong on 2019/8/31.
@@ -56,8 +66,9 @@ public class VideoEncoderDataPrepare implements Runnable, SinkConnector<VideoCap
     private boolean mReady;
     private boolean mRunning;
 
-    public VideoEncoderDataPrepare() {
+    public VideoEncoderDataPrepare(VideoMediaData videoMediaData) {
         rawDataConnector = new SrcConnector<>();
+        this.videoMediaData = videoMediaData;
     }
 
     public SrcConnector<VideoCaptureFrame> getRawDataConnector() {
@@ -65,7 +76,37 @@ public class VideoEncoderDataPrepare implements Runnable, SinkConnector<VideoCap
     }
 
     @Override
-    public int onDataAvailable(VideoCaptureFrame data) {
+    public int onDataAvailable(VideoCaptureFrame videoCaptureFrame) {
+        if (videoMediaData.getVideoCaptureType() == TEXTURE) {
+            if (mHandler != null) {
+                synchronized (mReadyFence) {
+                    if (!mReady) {
+                        return -1;
+                    }
+                }
+                mHandler.sendMessage(mHandler.obtainMessage(MSG_FRAME_AVAILABLE, videoCaptureFrame));
+            }
+        } else if (videoMediaData.getVideoCaptureType() == BYTE_ARRAY) {
+            if (!mReady) {
+                return -1;
+            }
+            byte[] changedRawData = new byte[videoCaptureFrame.rawData.length];
+            if (videoMediaData.getVideoCaptureFormat() == NV21) {
+                NV21ToNV12(videoCaptureFrame.rawData, changedRawData, videoCaptureFrame.videoWidth, videoCaptureFrame.videoHeight);
+            } else if (videoMediaData.getVideoCaptureFormat() == I420) {
+
+            }
+            final ByteBuffer buf = ByteBuffer.allocateDirect(changedRawData.length);
+            buf.clear();
+            buf.put(changedRawData);
+            buf.flip();
+            currentPTSUs = getPTSUs();
+            LogUtil.i("VideoEncoderDataPrepare video length:" + changedRawData.length + " width:" + videoCaptureFrame.videoWidth + " height:" + videoCaptureFrame.videoHeight);
+            rawDataConnector.onDataAvailable(new VideoCaptureFrame(buf, changedRawData.length, currentPTSUs));
+            prevOutputPTSUs = currentPTSUs;
+
+
+        }
         return 0;
     }
 
@@ -89,25 +130,34 @@ public class VideoEncoderDataPrepare implements Runnable, SinkConnector<VideoCap
         LogUtil.d("VideoEncoderDataPrepare thread exiting over:" + mReady);
     }
 
-    public void startEncoderDataPrepare(Surface encoderInputSurface, VideoMediaData videoMediaData) {
+    public void startEncoderDataPrepare(Surface encoderInputSurface) {
         LogUtil.d("startEncoderDataPrepare");
         this.mInputSurface = encoderInputSurface;
-        this.videoMediaData = videoMediaData;
-        synchronized (mReadyFence) {
+        if (this.videoMediaData.getVideoCaptureType() == TEXTURE) {
+            synchronized (mReadyFence) {
+                if (mRunning) {
+                    LogUtil.w("Encoder thread already running " + this.videoMediaData.getVideoCaptureType());
+                    return;
+                }
+                mRunning = true;
+                new Thread(this, "VideoEncoderDataPrepare").start();
+                while (!mReady) {
+                    try {
+                        mReadyFence.wait();
+                    } catch (InterruptedException ie) {
+                        // ignore
+                    }
+                }
+            }
+        } else if (this.videoMediaData.getVideoCaptureType() == BYTE_ARRAY) {
             if (mRunning) {
-                LogUtil.w("Encoder thread already running");
+                LogUtil.w("Encoder thread already running " + this.videoMediaData.getVideoCaptureType());
                 return;
             }
             mRunning = true;
-            new Thread(this, "VideoEncoderDataPrepare").start();
-            while (!mReady) {
-                try {
-                    mReadyFence.wait();
-                } catch (InterruptedException ie) {
-                    // ignore
-                }
-            }
+            mReady = true;
         }
+
     }
 
     public void stopEncoderDataPrepare() {
@@ -116,29 +166,27 @@ public class VideoEncoderDataPrepare implements Runnable, SinkConnector<VideoCap
         if (mHandler != null) {
             mHandler.sendMessage(mHandler.obtainMessage(MSG_RELEASE_EGL_CONTEXT));
             mHandler.sendMessage(mHandler.obtainMessage(MSG_QUIT));
+        } else {
+            mReady = mRunning = false;
         }
-
+        rawDataConnector.disconnect();
+        prevOutputPTSUs = 0;
+        currentPTSUs = 0;
         // We don't know when these will actually finish (or even start).  We don't want to
         // delay the UI thread though, so we return immediately.
     }
 
-    public void frameAvailable(VideoCaptureFrame videoCaptureFrame) {
-        synchronized (mReadyFence) {
-            if (!mReady) {
-                return;
-            }
-        }
-        //LogUtil.i("TJY","try to frameAvailable:"+videoCaptureFrame+" mReady:"+mReady);
-        mHandler.sendMessage(mHandler.obtainMessage(MSG_FRAME_AVAILABLE, videoCaptureFrame));
-    }
-
     public void updateSharedContext(EGLContext sharedContext) {
-        mHandler.sendMessage(mHandler.obtainMessage(MSG_UPDATE_SHARED_CONTEXT, sharedContext));
+        if (mHandler != null) {
+            mHandler.sendMessage(mHandler.obtainMessage(MSG_UPDATE_SHARED_CONTEXT, sharedContext));
+        }
     }
 
     public void initEncoderContext(EGLContext eglContext) {
         LogUtil.d("initEncoderContext");
-        mHandler.sendMessage(mHandler.obtainMessage(MSG_INIT_EGL_CONTEXT, eglContext));
+        if (mHandler != null) {
+            mHandler.sendMessage(mHandler.obtainMessage(MSG_INIT_EGL_CONTEXT, eglContext));
+        }
     }
 
 
@@ -146,10 +194,10 @@ public class VideoEncoderDataPrepare implements Runnable, SinkConnector<VideoCap
         mEglCore = new EglCore(eglContext, EglCore.FLAG_RECORDABLE);
         mInputWindowSurface = new WindowSurface(mEglCore, this.mInputSurface, true);
         mInputWindowSurface.makeCurrent();
-        if (this.videoMediaData.getVideoCaptureType() == 0 && this.videoMediaData.getVideoCaptureFormat() == 0) {
+        if (this.videoMediaData.getVideoCaptureType() == TEXTURE && this.videoMediaData.getVideoCaptureFormat() == TEXTURE_OES) {
             LogUtil.d("ProgramTextureOES");
             programTexture = new ProgramTextureOES();
-        } else if (this.videoMediaData.getVideoCaptureType() == 0 && this.videoMediaData.getVideoCaptureFormat() == 1) {
+        } else if (this.videoMediaData.getVideoCaptureType() == TEXTURE && this.videoMediaData.getVideoCaptureFormat() == VideoMediaData.CaptureFormat.TEXTURE_2D) {
             programTexture = new ProgramTexture2d();
         }
     }
@@ -168,9 +216,9 @@ public class VideoEncoderDataPrepare implements Runnable, SinkConnector<VideoCap
         mInputWindowSurface.makeCurrent();
 
         // Create new programs and such for the new context.
-        if (this.videoMediaData.getVideoCaptureType() == 0 && this.videoMediaData.getVideoCaptureFormat() == 0) {
+        if (this.videoMediaData.getVideoCaptureType() == TEXTURE && this.videoMediaData.getVideoCaptureFormat() == TEXTURE_OES) {
             programTexture = new ProgramTextureOES();
-        } else if (this.videoMediaData.getVideoCaptureType() == 0 && this.videoMediaData.getVideoCaptureFormat() == 1) {
+        } else if (this.videoMediaData.getVideoCaptureType() == TEXTURE && this.videoMediaData.getVideoCaptureFormat() == VideoMediaData.CaptureFormat.TEXTURE_2D) {
             programTexture = new ProgramTexture2d();
         }
     }
@@ -247,6 +295,34 @@ public class VideoEncoderDataPrepare implements Runnable, SinkConnector<VideoCap
                     throw new RuntimeException("Unhandled msg what=" + what);
             }
         }
+    }
+
+    private void NV21ToNV12(byte[] nv21, byte[] nv12, int width, int height) {
+        if (nv21 == null || nv12 == null) return;
+        int framesize = width * height;
+        int i = 0, j = 0;
+        System.arraycopy(nv21, 0, nv12, 0, framesize);
+        for (i = 0; i < framesize; i++) {
+            nv12[i] = nv21[i];
+        }
+        for (j = 0; j < framesize / 2; j += 2) {
+            nv12[framesize + j - 1] = nv21[j + framesize];
+        }
+        for (j = 0; j < framesize / 2; j += 2) {
+            nv12[framesize + j] = nv21[j + framesize - 1];
+        }
+    }
+
+    private long prevOutputPTSUs = 0;
+    private long currentPTSUs = 0;
+
+    protected long getPTSUs() {
+        long result = System.nanoTime() / 1000L;
+        // presentationTimeUs should be monotonic
+        // otherwise muxer fail to write
+        if (result < prevOutputPTSUs)
+            result = (prevOutputPTSUs - result) + result;
+        return result;
     }
 
 }

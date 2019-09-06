@@ -40,6 +40,7 @@ import com.serenegiant.model.BufferInfoEx;
 import com.serenegiant.model.EncodedFrame;
 import com.serenegiant.model.VideoMediaData;
 import com.serenegiant.utils.LogUtil;
+import com.serenegiant.utils.OtherUtil;
 
 import io.agora.RTMPMuxer;
 
@@ -75,8 +76,8 @@ public class RtmpMuxer extends BaseMuxer {
     };
 
 
-    public RtmpMuxer(StreamPublishParam publishParam,VideoMediaData videoMediaData,AudioMediaData audioMediaData) throws IOException {
-        super(videoMediaData,audioMediaData);
+    public RtmpMuxer(StreamPublishParam publishParam, VideoMediaData videoMediaData, AudioMediaData audioMediaData) throws IOException {
+        super(videoMediaData, audioMediaData);
         try {
             mStreamPublishParam = publishParam;
         } catch (final NullPointerException e) {
@@ -116,7 +117,6 @@ public class RtmpMuxer extends BaseMuxer {
 
             @Override
             public void onSendVideo(FramePool.Frame sendFrame) {
-
                 if (mRtmpMuxer.writeVideo(sendFrame.data, 0, sendFrame.length, sendFrame.bufferInfo.getTotalTime()) >= 0) {
                     LogUtil.d("onSendVideo " + sendFrame.length + " pts:" + sendFrame.bufferInfo.getTotalTime());
                     if (!startCount) {
@@ -202,7 +202,7 @@ public class RtmpMuxer extends BaseMuxer {
      * @return true when muxer is ready to write
      */
     @Override
-	public synchronized boolean startMuxer() {
+    public synchronized boolean startMuxer() {
         LogUtil.d("start");
         mStatredCount++;
         if ((mEncoderCount > 0) && (mStatredCount == mEncoderCount)) {
@@ -217,7 +217,7 @@ public class RtmpMuxer extends BaseMuxer {
      * request stop recording from encoder when encoder received EOS
      */
     @Override
-	 public synchronized void stopMuxer() {
+    public synchronized void stopMuxer() {
         LogUtil.d("stop:mStatredCount=" + mStatredCount);
         mStatredCount--;
         if ((mEncoderCount > 0) && (mStatredCount <= 0)) {
@@ -245,7 +245,7 @@ public class RtmpMuxer extends BaseMuxer {
      * @param encodedFrame
      */
     @Override
-	protected synchronized void writeEncodedData(EncodedFrame encodedFrame) {
+    protected synchronized void writeEncodedData(EncodedFrame encodedFrame) {
         if (mStatredCount > 0) {
             LogUtil.i("addTrack:" + encodedFrame.getmTrackIndex() + ",EncodedFrame=" + encodedFrame);
             ByteBuffer mBuffer = encodedFrame.getEncodedByteBuffer();

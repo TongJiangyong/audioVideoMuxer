@@ -59,7 +59,7 @@ public class AndroidMediaMuxer extends BaseMuxer {
      * @throws IOException
      */
     public AndroidMediaMuxer(String path, VideoMediaData videoMediaData, AudioMediaData audioMediaData) throws IOException {
-        super(videoMediaData,audioMediaData);
+        super(videoMediaData, audioMediaData);
         try {
             mOutputPath = path;
         } catch (final NullPointerException e) {
@@ -132,7 +132,7 @@ public class AndroidMediaMuxer extends BaseMuxer {
      * @return true when muxer is ready to write
      */
     @Override
-	public synchronized boolean startMuxer() {
+    public synchronized boolean startMuxer() {
         LogUtil.v("start:");
         mStatredCount++;
         if ((mEncoderCount > 0) && (mStatredCount == mEncoderCount)) {
@@ -148,7 +148,7 @@ public class AndroidMediaMuxer extends BaseMuxer {
      * request stop recording from encoder when encoder received EOS
      */
     @Override
-	public synchronized void stopMuxer() {
+    public synchronized void stopMuxer() {
         LogUtil.v("stop:mStatredCount=" + mStatredCount);
         mStatredCount--;
         if ((mEncoderCount > 0) && (mStatredCount <= 0)) {
@@ -166,7 +166,7 @@ public class AndroidMediaMuxer extends BaseMuxer {
      * @return minus value indicate error
      */
     @Override
-	public synchronized int addTrackToMuxer(MediaEncoderFormat format) {
+    public synchronized int addTrackToMuxer(MediaEncoderFormat format) {
         if (mIsStarted)
             throw new IllegalStateException("muxer already started");
         final int trackIx = mMediaMuxer.addTrack(format.getMediaFormat());
@@ -178,7 +178,7 @@ public class AndroidMediaMuxer extends BaseMuxer {
      * @param encodedFrame
      */
     @Override
-	protected synchronized void writeEncodedData(EncodedFrame encodedFrame) {
+    protected synchronized void writeEncodedData(EncodedFrame encodedFrame) {
         if (mStatredCount > 0) {
             LogUtil.i("addTrack:" + encodedFrame.getmTrackIndex() + ",BufferInfo=" + encodedFrame.getmBufferInfo());
             mMediaMuxer.writeSampleData(encodedFrame.getmTrackIndex(), encodedFrame.getEncodedByteBuffer(), encodedFrame.getmBufferInfo());

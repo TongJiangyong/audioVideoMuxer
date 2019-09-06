@@ -22,6 +22,7 @@ public class AudioCaptureThread extends BaseAudioCapture {
     private AudioRecordThread mAudioRecordThread = null;
     private boolean mIsCapturing = false;
     private AudioMediaData mAudioMediaData;
+
     public AudioCaptureThread(AudioMediaData audioMediaData) {
         super();
         this.mAudioMediaData = audioMediaData;
@@ -40,6 +41,8 @@ public class AudioCaptureThread extends BaseAudioCapture {
     @Override
     public void stopAudioCapture() {
         mIsCapturing = false;
+        prevOutputPTSUs = 0;
+        currentPTSUs = 0;
     }
 
     /**

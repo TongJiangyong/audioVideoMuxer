@@ -41,8 +41,9 @@ public class MediaCodecAudioEncoder extends MediaCodecEncoder {
     private static final String TAG = "MediaCodecAudioEncoder";
 
     private AudioMediaData mAudioMediaData;
-    public MediaCodecAudioEncoder(final IEncoderListener listener,AudioMediaData audioMediaData) {
-        super(listener,"MediaCodecAudioEncoder");
+
+    public MediaCodecAudioEncoder(final IEncoderListener listener, AudioMediaData audioMediaData) {
+        super(listener, "MediaCodecAudioEncoder");
         mAudioMediaData = audioMediaData;
     }
 
@@ -68,7 +69,7 @@ public class MediaCodecAudioEncoder extends MediaCodecEncoder {
         audioFormat.setInteger(MediaFormat.KEY_CHANNEL_MASK, mAudioMediaData.getAudioChannelFormat());
         audioFormat.setInteger(MediaFormat.KEY_BIT_RATE, mAudioMediaData.getAudioBitRate());
         audioFormat.setInteger(MediaFormat.KEY_BITRATE_MODE,
-                    MediaCodecInfo.EncoderCapabilities.BITRATE_MODE_VBR);
+                MediaCodecInfo.EncoderCapabilities.BITRATE_MODE_VBR);
 //		audioFormat.setLong(MediaFormat.KEY_MAX_INPUT_SIZE, inputFile.length());
 //      audioFormat.setLong(MediaFormat.KEY_DURATION, (long)durationInMs );
         LogUtil.i("format: " + audioFormat);
@@ -96,6 +97,11 @@ public class MediaCodecAudioEncoder extends MediaCodecEncoder {
         super.release();
     }
 
+    @Override
+    protected void signalEndOfInputStream() {
+        LogUtil.d("sending0 EOS to encoder codecType" + codecType);
+        encode(null, 0, getPTSUs());
+    }
 
     /**
      * select the first codec that match a specific MIME type

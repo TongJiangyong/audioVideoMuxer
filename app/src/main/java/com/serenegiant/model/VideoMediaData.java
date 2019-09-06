@@ -11,6 +11,14 @@ import com.serenegiant.utils.LogUtil;
  */
 
 public class VideoMediaData {
+    public enum CaptureFormat{
+        TEXTURE_OES,TEXTURE_2D,I420,NV21
+    }
+
+    public enum CaptureType{
+        TEXTURE,BYTE_ARRAY
+    }
+
     public String videoMimeType;
 
 
@@ -25,8 +33,8 @@ public class VideoMediaData {
     private int videoEncodeBitrate;
 
     //capture
-    private int videoCaptureType; //0 texture ;1 byte array
-    private int videoCaptureFormat; //0 texture oes ;1 texture2d; 2 yuv420p //3 nv21;
+    private CaptureType videoCaptureType; //0 texture ;1 byte array
+    private CaptureFormat videoCaptureFormat; //0 texture oes ;1 texture2d; 2 yuv420p //3 nv21;
     private int videoCaptureWidth;
     private int videoCaptureHeight;
     private int videoCaptureFps;
@@ -109,19 +117,19 @@ public class VideoMediaData {
         this.videoEncodeHeight = videoEncodeHeight;
     }
 
-    public int getVideoCaptureType() {
+    public CaptureType getVideoCaptureType() {
         return videoCaptureType;
     }
 
-    public void setVideoCaptureType(int videoCaptureType) {
+    public void setVideoCaptureType(CaptureType videoCaptureType) {
         this.videoCaptureType = videoCaptureType;
     }
 
-    public int getVideoCaptureFormat() {
+    public CaptureFormat getVideoCaptureFormat() {
         return videoCaptureFormat;
     }
 
-    public void setVideoCaptureFormat(int videoCaptureFormat) {
+    public void setVideoCaptureFormat(CaptureFormat videoCaptureFormat) {
         this.videoCaptureFormat = videoCaptureFormat;
     }
 

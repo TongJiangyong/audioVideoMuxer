@@ -4,6 +4,11 @@ import android.media.AudioFormat;
 import android.media.MediaCodecInfo;
 import android.opengl.EGLContext;
 
+import com.serenegiant.model.VideoMediaData;
+
+import static com.serenegiant.model.VideoMediaData.CaptureFormat.TEXTURE_OES;
+import static com.serenegiant.model.VideoMediaData.CaptureType.TEXTURE;
+
 /**
  * Created by lixiaochen on 2019/9/1.
  */
@@ -21,10 +26,10 @@ public class ConstantMediaConfig {
     public final static int VIDEO_ENCODE_HEIGHT = 720;
 
     //video capture
-    public final static int VIDEO_CAPTURE_TYPE = 0; //0 texture ;1 byte array
-    public final static int VIDEO_CAPTURE_FORMAT = 0; //0 texture oes ;1 texture2d; 2 yuv420p //3 nv21;
+    public final static VideoMediaData.CaptureType VIDEO_CAPTURE_TYPE = TEXTURE; //0 texture ;1 byte array
+    public final static VideoMediaData.CaptureFormat VIDEO_CAPTURE_FORMAT = TEXTURE_OES; //0 texture oes ;1 texture2d; 2 yuv420p //3 nv21;
     public final static int VIDEO_CAPTURE_WIDHT = 1280;
-    public final static int VIDEO_CAPTURE_HEIGHT= 720;
+    public final static int VIDEO_CAPTURE_HEIGHT = 720;
     public final static int VIDEO_CAPTURE_FPS = 15;
     public final static EGLContext VIDEO_CAPTURE_EGL_CONTEXT = null;
 

@@ -23,6 +23,7 @@ package com.serenegiant.encoder;
 */
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 
 import android.media.MediaCodec;
 import android.media.MediaCodecInfo;
@@ -46,8 +47,7 @@ public class MediaCodecVideoEncoder extends MediaCodecEncoder {
     private Surface mSurface;
 
     public MediaCodecVideoEncoder(final IEncoderListener listener, VideoMediaData videoMediaData) {
-        super(listener, "MediaCodecAudioEncoder");
-        LogUtil.i("MediaCodecVideoEncoder: ");
+        super(listener, "MediaCodecVideoEncoder");
         mVideoMediaData = videoMediaData;
     }
 
@@ -73,8 +73,14 @@ public class MediaCodecVideoEncoder extends MediaCodecEncoder {
         final MediaFormat format = MediaFormat.createVideoFormat(
                 mVideoMediaData.getVideoMimeType(),
                 mVideoMediaData.getVideoEncodeWidth(),
-                mVideoMediaData.getVideoEncodeHeight());
-        format.setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface);    // API >= 18
+                mVideoMediaData.getVideoEncodeHeight()
+        );
+        if (mVideoMediaData.getVideoCaptureType() == VideoMediaData.CaptureType.TEXTURE) {
+            format.setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface);    // API >= 18
+        } else if (mVideoMediaData.getVideoCaptureType() == VideoMediaData.CaptureType.BYTE_ARRAY) {
+            format.setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420SemiPlanar);
+        }
+
         format.setInteger(MediaFormat.KEY_BIT_RATE, mVideoMediaData.getVideoEncodeBitrate());
         format.setInteger(MediaFormat.KEY_FRAME_RATE, mVideoMediaData.getVideoFrameRate());
         format.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, mVideoMediaData.getVideoKeyIframe());
@@ -86,7 +92,9 @@ public class MediaCodecVideoEncoder extends MediaCodecEncoder {
         mMediaCodec.configure(format, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
         // get Surface for encoder input
         // this method only can call between #configure and #start
-        mSurface = mMediaCodec.createInputSurface();    // API >= 18
+        if (mVideoMediaData.getVideoCaptureType() == VideoMediaData.CaptureType.TEXTURE) {
+            mSurface = mMediaCodec.createInputSurface();    // API >= 18
+        }
         mMediaCodec.start();
         LogUtil.i("prepareEncoders finishing");
         if (mListener != null) {
@@ -178,9 +186,11 @@ public class MediaCodecVideoEncoder extends MediaCodecEncoder {
 
     static {
         recognizedFormats = new int[]{
-//        	MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420Planar,
-//        	MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420SemiPlanar,
-//        	MediaCodecInfo.CodecCapabilities.COLOR_QCOM_FormatYUV420SemiPlanar,
+                //mediaCodec不支持nv21，所以一定要直接转一下
+                //而相机一般只有YV12这两种格式
+                MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420Planar,
+                MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420SemiPlanar,
+                MediaCodecInfo.CodecCapabilities.COLOR_QCOM_FormatYUV420SemiPlanar,
                 MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface,
         };
     }
@@ -198,17 +208,36 @@ public class MediaCodecVideoEncoder extends MediaCodecEncoder {
 
     @Override
     protected void signalEndOfInputStream() {
-        LogUtil.d("sending EOS to encoder codecType" + codecType);
-        mMediaCodec.signalEndOfInputStream();    // API >= 18
+        LogUtil.d("sending2 EOS to encoder codecType type " + codecType);
+        //
+        if (mVideoMediaData.getVideoCaptureType() == VideoMediaData.CaptureType.TEXTURE) {
+            //only used in surface input
+            mMediaCodec.signalEndOfInputStream();    // API >= 18
+        } else {
+            encode(null, 0, getPTSUs());
+        }
         mIsEOS = true;
+        LogUtil.d("sending1 EOS to encoder codecType type " + codecType);
     }
 
     @Override
     public int onDataAvailable(VideoCaptureFrame data) {
-        if (mRequestStop) {
-            return 0;
+        if (mVideoMediaData.getVideoCaptureType() == VideoMediaData.CaptureType.TEXTURE) {
+            if (mRequestStop) {
+                return 0;
+            }
+            super.frameAvailableSoon();
+        } else if (mVideoMediaData.getVideoCaptureType() == VideoMediaData.CaptureType.BYTE_ARRAY) {
+            if (mRequestStop) {
+                return 0;
+            }
+            if (data != null) {
+                LogUtil.d("video raw onDataAvailable encode:" + data.mBuffer + " length:" + data.mLength + " time:" + data.mTimeStamp);
+                encode(data.mBuffer, data.mLength, data.mTimeStamp);
+            }
+            super.frameAvailableSoon();
+
         }
-        super.frameAvailableSoon();
         return 0;
     }
 }
