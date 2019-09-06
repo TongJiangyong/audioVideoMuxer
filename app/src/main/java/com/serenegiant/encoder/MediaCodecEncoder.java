@@ -79,15 +79,16 @@ public abstract class MediaCodecEncoder extends BaseEncoder implements Runnable 
 
     protected MediaEncoderFormat.CodecType codecType; //0为audio 1为video
 
-    protected final IEncoderListener mListener;
+    protected boolean enableCallback = true;
 
     public MediaCodecEncoder(final IEncoderListener listener, String codecThreadName) {
         super(listener);
+        enableCallback = true;
         if (listener == null) throw new NullPointerException("MediaEncoderListener is null");
 //    	if (muxer == null) throw new NullPointerException("AndroidMediaMuxer is null");
 //		mWeakMuxer = new WeakReference<AndroidMediaMuxer>(muxer);
 //		muxer.addEncoder(this);
-        this.mListener = listener;
+        this.mEncoderListener = listener;
         synchronized (mSync) {
             // create BufferInfo here for effectiveness(to reduce GC)
             mBufferInfo = new MediaCodec.BufferInfo();
@@ -219,13 +220,14 @@ public abstract class MediaCodecEncoder extends BaseEncoder implements Runnable 
     /**
      * Release all releated objects
      */
-    @Override
-    public void release() {
+    protected void release() {
         LogUtil.d("release");
-        try {
-            mListener.onEncoderStopped(this);
-        } catch (final Exception e) {
-            LogUtil.e("failed onStopped:" + e);
+        if (mEncoderListener != null&&enableCallback) {
+            try {
+                mEncoderListener.onEncoderStopped(this);
+            } catch (final Exception e) {
+                LogUtil.e("failed onStopped:" + e);
+            }
         }
         mIsCapturing = false;
         if (mMediaCodec != null) {
@@ -237,10 +239,12 @@ public abstract class MediaCodecEncoder extends BaseEncoder implements Runnable 
                 LogUtil.e("failed releasing MediaCodec:" + e);
             }
         }
-        try {
-            mEncoderListener.onEncoderReleased();
-        } catch (final Exception e) {
-            LogUtil.e("failed onEncoderReleased" + e);
+        if (mEncoderListener != null&&enableCallback) {
+            try {
+                mEncoderListener.onEncoderReleased();
+            } catch (final Exception e) {
+                LogUtil.e("failed onEncoderReleased" + e);
+            }
         }
 
         mBufferInfo = null;
@@ -335,12 +339,14 @@ public abstract class MediaCodecEncoder extends BaseEncoder implements Runnable 
                 final MediaFormat format = mMediaCodec.getOutputFormat(); // API >= 16
                 //mTrackIndex = muxer.addTrack(format);
                 mOutputBufferEnabled = true;
-
-                try {
-                    mTrackIndex = mEncoderListener.onEncoderOutPutBufferReady(new MediaEncoderFormat(format));
-                } catch (final Exception e) {
-                    break LOOP;
+                if (mEncoderListener != null&&enableCallback) {
+                    try {
+                        mTrackIndex = mEncoderListener.onEncoderOutPutBufferReady(new MediaEncoderFormat(format));
+                    } catch (final Exception e) {
+                        break LOOP;
+                    }
                 }
+                enableCallback = true;
             } else if (encoderStatus < 0) {
                 // unexpected status
                 LogUtil.w("drain:unexpected result from encoder#dequeueOutputBuffer: " + encoderStatus);
@@ -383,6 +389,7 @@ public abstract class MediaCodecEncoder extends BaseEncoder implements Runnable 
             }
         }
     }
+
 
     /**
      * previous presentationTimeUs for writing

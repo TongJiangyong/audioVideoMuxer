@@ -32,6 +32,7 @@ import android.media.MediaFormat;
 
 import android.view.Surface;
 
+import com.serenegiant.model.AudioMediaData;
 import com.serenegiant.model.MediaEncoderFormat;
 import com.serenegiant.model.VideoCaptureFrame;
 import com.serenegiant.model.VideoMediaData;
@@ -43,7 +44,7 @@ public class MediaCodecVideoEncoder extends MediaCodecEncoder {
     private static final String TAG = "MediaCodecVideoEncoder";
 
 
-    private final VideoMediaData mVideoMediaData;
+    private VideoMediaData mVideoMediaData;
     private Surface mSurface;
 
     public MediaCodecVideoEncoder(final IEncoderListener listener, VideoMediaData videoMediaData) {
@@ -97,9 +98,9 @@ public class MediaCodecVideoEncoder extends MediaCodecEncoder {
         }
         mMediaCodec.start();
         LogUtil.i("prepareEncoders finishing");
-        if (mListener != null) {
+        if (mEncoderListener != null&&enableCallback) {
             try {
-                mListener.onEncoderPrepared(this);
+                mEncoderListener.onEncoderPrepared(this);
             } catch (final Exception e) {
                 LogUtil.e("prepareEncoders:" + e);
             }
@@ -239,5 +240,13 @@ public class MediaCodecVideoEncoder extends MediaCodecEncoder {
 
         }
         return 0;
+    }
+
+    public void reLoadEncoder(Object mediaData) throws IOException {
+        enableCallback = false;
+        this.stopRecording();
+        mVideoMediaData = (VideoMediaData) mediaData;
+        this.prepare();
+        this.startRecording();
     }
 }

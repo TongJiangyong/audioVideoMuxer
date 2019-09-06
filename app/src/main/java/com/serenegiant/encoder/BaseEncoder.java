@@ -30,9 +30,6 @@ public abstract class BaseEncoder implements SinkConnector<VideoCaptureFrame> {
     //prepare encoder configuration
     public abstract void prepare() throws IOException;
 
-    //release encoder
-    public abstract void release();
-
     //start encoder
     public abstract void startRecording();
 
@@ -44,6 +41,8 @@ public abstract class BaseEncoder implements SinkConnector<VideoCaptureFrame> {
 
     //notify encoder an new input buffer will come
     public abstract boolean frameAvailableSoon();
+
+    public abstract void reLoadEncoder(Object mediaData) throws IOException;
 
 
 }

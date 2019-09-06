@@ -11,6 +11,7 @@ public interface IEncoderListener {
     public void onEncoderPrepared(BaseEncoder mediaEncoder);
 
     //encoder is ready to accept input buffer ,and should return the index of encoded data
+    //the index is necessary in AndroidMediaMuxer for the MediaMuxer,but useless in RTMPMuxer
     public int onEncoderOutPutBufferReady(MediaEncoderFormat mediaEncoderFormat) throws Exception;
 
     //encoder is stopped

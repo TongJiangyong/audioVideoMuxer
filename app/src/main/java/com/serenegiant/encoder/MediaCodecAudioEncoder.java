@@ -77,9 +77,9 @@ public class MediaCodecAudioEncoder extends MediaCodecEncoder {
         mMediaCodec.configure(audioFormat, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
         mMediaCodec.start();
         LogUtil.i("prepareEncoders finishing");
-        if (mListener != null) {
+        if (mEncoderListener != null&&enableCallback) {
             try {
-                mListener.onEncoderPrepared(this);
+                mEncoderListener.onEncoderPrepared(this);
             } catch (final Exception e) {
                 LogUtil.e("prepareEncoders:" + e);
             }
@@ -93,7 +93,7 @@ public class MediaCodecAudioEncoder extends MediaCodecEncoder {
     }
 
     @Override
-    public void release() {
+    protected void release() {
         super.release();
     }
 
@@ -147,6 +147,14 @@ public class MediaCodecAudioEncoder extends MediaCodecEncoder {
         }
         super.frameAvailableSoon();
         return 0;
+    }
+
+    public void reLoadEncoder(Object mediaData) throws IOException {
+        enableCallback = false;
+        this.stopRecording();
+        mAudioMediaData = (AudioMediaData)mediaData;
+        this.prepare();
+        this.startRecording();
     }
 
 }

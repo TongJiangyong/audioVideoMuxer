@@ -174,4 +174,8 @@ public class VideoMediaData {
     public int getVideoEncodeBitrate() {
         return videoEncodeBitrate;
     }
+
+    public void setVideoEncodeBitrate(int videoEncodeBitrate) {
+        this.videoEncodeBitrate = videoEncodeBitrate;
+    }
 }

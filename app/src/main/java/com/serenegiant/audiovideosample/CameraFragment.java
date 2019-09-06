@@ -26,6 +26,7 @@ import java.io.IOException;
 
 import android.app.Fragment;
 import android.os.Bundle;
+import android.os.Handler;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.View.OnClickListener;
@@ -73,8 +74,8 @@ public class CameraFragment extends Fragment {
     private AudioMediaData audioMediaData;
     private AudioCaptureThread audioCaptureThread;
 
-    
-
+    //used to test reload encoder,and only test in rtmp
+    private Handler mFrameCountHandler = null;
     public CameraFragment() {
         // need default constructor
     }
@@ -89,6 +90,7 @@ public class CameraFragment extends Fragment {
         updateScaleModeText();
         mRecordButton = (ImageButton) rootView.findViewById(R.id.record_button);
         mRecordButton.setOnClickListener(mOnClickListener);
+        mFrameCountHandler = new Handler();
         return rootView;
     }
 
@@ -149,6 +151,8 @@ public class CameraFragment extends Fragment {
      */
     private void startRecording() {
         LogUtil.v("startEncoders:");
+        //5s后禁止callback 然后改变参数，重启encoder
+        mFrameCountHandler.postDelayed(mFrameCountProducer, 5000);
         try {
             videoMediaData = new VideoMediaData();
 
@@ -196,11 +200,27 @@ public class CameraFragment extends Fragment {
             audioEncoder.getEncoderedDataConnector().connect(mMuxer);
             mMuxer.prepareEncoders();
             mMuxer.startEncoders();
+
         } catch (final IOException e) {
             mRecordButton.setColorFilter(0);
             LogUtil.e("startCapture:" + e);
         }
     }
+
+    private Runnable mFrameCountProducer = new Runnable() {
+        @Override
+        public void run() {
+            if(mMuxer instanceof RtmpMuxer){
+                LogUtil.d(" enable to restart videoEncoder");
+                videoMediaData.setVideoEncodeBitrate(videoMediaData.getVideoEncodeBitrate()*2);
+                try {
+                    videoEncoder.reLoadEncoder(videoMediaData);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+    };
 
     /**
      * request stop recording
