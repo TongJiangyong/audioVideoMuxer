@@ -73,6 +73,8 @@ public class CameraFragment extends Fragment {
     private AudioMediaData audioMediaData;
     private AudioCaptureThread audioCaptureThread;
 
+    
+
     public CameraFragment() {
         // need default constructor
     }
@@ -206,8 +208,8 @@ public class CameraFragment extends Fragment {
     private void stopRecording() {
         LogUtil.v("stopEncoders:mMuxer=" + mMuxer);
         mRecordButton.setColorFilter(0);    // return to default color
-
         if (mMuxer != null) {
+
             mMuxer.stopEncoders();
             // you should not wait here
         }
@@ -228,13 +230,6 @@ public class CameraFragment extends Fragment {
 
 
         @Override
-        public void onEncoderStopped(BaseEncoder mediaEncoder) {
-            LogUtil.v("onStopped:encoder=" + mediaEncoder);
-            if (mediaEncoder instanceof MediaCodecVideoEncoder)
-                mCameraView.setVideoCodecContext(null);
-        }
-
-        @Override
         public void onEncoderPrepared(BaseEncoder mediaEncoder) {
             LogUtil.v("onPrepared:encoder=" + mediaEncoder);
             //very important to put data when encoder all complete
@@ -247,16 +242,6 @@ public class CameraFragment extends Fragment {
                 audioCaptureThread.startAudioCapture();
             }
 
-        }
-
-        @Override
-        public void onEncoderReleased() throws Exception {
-            try {
-                LogUtil.v("onEncoderReleased");
-                mMuxer.stopMuxer();
-            } catch (Exception e) {
-                throw e;
-            }
         }
 
 
@@ -278,5 +263,28 @@ public class CameraFragment extends Fragment {
             }
             return trackIndex;
         }
+
+
+
+        @Override
+        public void onEncoderStopped(BaseEncoder mediaEncoder) {
+            LogUtil.v("onStopped:encoder=" + mediaEncoder);
+            if (mediaEncoder instanceof MediaCodecVideoEncoder)
+                mCameraView.setVideoCodecContext(null);
+        }
+
+
+
+        @Override
+        public void onEncoderReleased() throws Exception {
+            try {
+                LogUtil.v("onEncoderReleased");
+                mMuxer.stopMuxer();
+            } catch (Exception e) {
+                throw e;
+            }
+        }
+
+
     };
 }
